@@ -19,3 +19,6 @@ HEADERS += \
     markovedge.h \
     markovchain.h
 
+DISTFILES += \
+    README.md
+
