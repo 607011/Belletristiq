@@ -7,6 +7,11 @@
 #include "markovchain.h"
 #include <QRegExp>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+
 
 MarkovChain::MarkovChain(void)
   : mCurrentNodeId(0)
@@ -23,6 +28,13 @@ void MarkovChain::postProcess(void)
 }
 
 
+void MarkovChain::clear(void)
+{
+  mCurrentNodeId = 0;
+  mNodeList.clear();
+}
+
+
 int MarkovChain::count(void) const
 {
   return mNodeList.count();
@@ -34,9 +46,10 @@ MarkovNode *MarkovChain::at(int idx)
   return mNodeList.at(idx);
 }
 
-void MarkovChain::readFromFile(const QString &filename)
+
+void MarkovChain::readFromTextFile(const QString &filename)
 {
-  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?])?", Qt::CaseSensitive, QRegExp::RegExp);
+  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
   QFile inFile(filename);
   if (inFile.open(QIODevice::ReadOnly)) {
     QStringList tokens;
@@ -57,6 +70,47 @@ void MarkovChain::readFromFile(const QString &filename)
       add(tokens);
     }
     inFile.close();
+  }
+}
+
+
+void MarkovChain::readFromJsonFile(const QString &filename)
+{
+  QFile inFile(filename);
+  if (inFile.open(QIODevice::ReadOnly)) {
+    QByteArray jsonData = inFile.readAll();
+    QJsonParseError jsonError;
+    QJsonDocument json = QJsonDocument::fromJson(jsonData, &jsonError);
+    if (jsonError.error == QJsonParseError::NoError) {
+      QJsonArray nodes = json.array();
+      foreach (QJsonValue node, nodes) {
+        MarkovNode *newNode = MarkovNode::fromVariantMap(node.toObject().toVariantMap());
+        mNodeList.append(newNode);
+      }
+      foreach (MarkovNode *node, mNodeList) {
+        node->postProcess(this);
+      }
+    }
+    inFile.close();
+  }
+}
+
+
+void MarkovChain::add(const QStringList &tokenList)
+{
+  MarkovNode *prev = Q_NULLPTR;
+  foreach (QString token, tokenList) {
+    MarkovNodeList::iterator idx;
+    bool contained = find(token, idx);
+    MarkovNode *curr = *idx;
+    if (!contained) {
+      curr = new MarkovNode(token, ++mCurrentNodeId);
+      mNodeList.insert(idx, curr);
+    }
+    if (prev != Q_NULLPTR) {
+      prev->addSuccessor(curr);
+    }
+    prev = curr;
   }
 }
 
@@ -88,25 +142,6 @@ bool MarkovChain::find(const QString &token, MarkovNodeList::iterator &i)
     }
   }
   return false;
-}
-
-
-void MarkovChain::add(const QStringList &tokenList)
-{
-  MarkovNode *prev = Q_NULLPTR;
-  foreach (QString token, tokenList) {
-    MarkovNodeList::iterator idx;
-    bool contained = find(token, idx);
-    MarkovNode *curr = *idx;
-    if (!contained) {
-      curr = new MarkovNode(token, ++mCurrentNodeId);
-      mNodeList.insert(idx, curr);
-    }
-    if (prev != Q_NULLPTR) {
-      prev->addSuccessor(curr);
-    }
-    prev = curr;
-  }
 }
 
 

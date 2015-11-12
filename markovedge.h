@@ -17,9 +17,11 @@ class MarkovNode;
 class MarkovEdge {
 public:
   explicit MarkovEdge(MarkovNode *mNode);
+  MarkovEdge(MarkovNode *node, int count);
 
   MarkovNode *node(void);
   int count(void) const;
+  void setCount(int);
   qreal p(void) const;
   void setProbability(qreal p);
   void increaseCount(void);

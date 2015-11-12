@@ -4,7 +4,7 @@
  *
  */
 
-
+#include "markovchain.h"
 #include "markovnode.h"
 #include "markovedge.h"
 
@@ -64,6 +64,24 @@ const MarkovNode::MarkovEdgeList &MarkovNode::successors(void) const
 }
 
 
+const QVariantList &MarkovNode::preliminarySuccessors(void) const
+{
+  return mPreliminarySuccessors;
+}
+
+
+void MarkovNode::setSuccessors(const MarkovEdgeList &successors)
+{
+  mSuccessors = successors;
+}
+
+
+void MarkovNode::setPreliminarySuccessors(const QVariantList &successors)
+{
+  mPreliminarySuccessors = successors;
+}
+
+
 const QString &MarkovNode::token(void) const
 {
   return mToken;
@@ -87,6 +105,24 @@ MarkovNode *MarkovNode::selectSuccessor(qreal p)
 }
 
 
+void MarkovNode::postProcess(const MarkovChain *chain)
+{
+  mSuccessors.clear();
+  foreach (QVariant s, mPreliminarySuccessors) {
+    QVariantMap successor = s.toMap();
+    const int id = successor["node_id"].toInt();
+    const int count = successor["count"].toInt();
+    foreach (MarkovNode *node, chain->nodes()) {
+      if (node->id() == id) {
+        MarkovEdge *successor = new MarkovEdge(node, count);
+        mSuccessors.append(successor);
+        break;
+      }
+    }
+  }
+}
+
+
 QVariantMap MarkovNode::toVariantMap(void) const
 {
   QVariantMap map;
@@ -101,10 +137,11 @@ QVariantMap MarkovNode::toVariantMap(void) const
 }
 
 
-MarkovNode *MarkovNode::fromVariantMap(const QVariantMap &)
+MarkovNode *MarkovNode::fromVariantMap(const QVariantMap &map)
 {
-  // TODO ...
-  return Q_NULLPTR;
+  MarkovNode *node = new MarkovNode(map["token"].toString(), map["id"].toInt());
+  node->setPreliminarySuccessors(map["successors"].toList());
+  return node;
 }
 
 

@@ -17,6 +17,15 @@ MarkovEdge::MarkovEdge(MarkovNode *node)
 }
 
 
+MarkovEdge::MarkovEdge(MarkovNode *node, int count)
+  : mNode(node)
+  , mCount(count)
+  , mProbability(1.0)
+{
+  /* ... */
+}
+
+
 MarkovNode *MarkovEdge::node(void)
 {
   return mNode;
@@ -26,6 +35,12 @@ MarkovNode *MarkovEdge::node(void)
 int MarkovEdge::count(void) const
 {
   return mCount;
+}
+
+
+void MarkovEdge::setCount(int count)
+{
+  mCount = count;
 }
 
 

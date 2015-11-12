@@ -7,9 +7,11 @@
 
 #include <random>
 
+#include <QSettings>
 #include <QString>
 #include <QDateTime>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QJsonDocument>
 
 #include "mainwindow.h"
@@ -33,6 +35,10 @@ public:
   MarkovChain *markovChain;
   std::mt19937 rng;
   std::uniform_real_distribution<qreal> pDist;
+  QSettings settings;
+  QString lastSaveMarkovDirectory;
+  QString lastLoadMarkovDirectory;
+  QString lastLoadTextDirectory;
 };
 
 
@@ -41,37 +47,15 @@ MainWindow::MainWindow(QWidget *parent)
   , ui(new Ui::MainWindow)
   , d_ptr(new MainWindowPrivate)
 {
-  Q_D(MainWindow);
   ui->setupUi(this);
 
   QObject::connect(ui->actionExit, SIGNAL(triggered(bool)), SLOT(close()));
+  QObject::connect(ui->actionLoadTextFiles, SIGNAL(triggered(bool)), SLOT(onLoadTextFiles()));
   QObject::connect(ui->actionSaveMarkovChain, SIGNAL(triggered(bool)), SLOT(onSaveMarkovChain()));
   QObject::connect(ui->actionLoadMarkovChain, SIGNAL(triggered(bool)), SLOT(onLoadMarkovChain()));
+  QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(generateText()));
 
-  d->markovChain->readFromFile("/Users/olau/Workspace/Belletristiq/Heine/1.txt");
-  d->markovChain->readFromFile("/Users/olau/Workspace/Belletristiq/Heine/2.txt");
-  d->markovChain->readFromFile("/Users/olau/Workspace/Belletristiq/Heine/3.txt");
-  d->markovChain->readFromFile("/Users/olau/Workspace/Belletristiq/Heine/4.txt");
-  d->markovChain->postProcess();
-
-  std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
-  MarkovNode *node = Q_NULLPTR;
-  int N = 400;
-  QString lastToken;
-  QString result;
-  while (--N > 0) {
-    if (node == Q_NULLPTR) {
-      node = d->markovChain->at(nDist(d->rng));
-    }
-    const QString &token = node->token();
-    if (!lastToken.isEmpty() && token != "." && token != "," && token != ":" && token != ";" && token != "?" && token != "!" && token != ")") {
-      result += " ";
-    }
-    result += token;
-    node = node->selectSuccessor(d->pDist(d->rng));
-    lastToken = token;
-  }
-  ui->plainTextEdit->setPlainText(result);
+  restoreSettings();
 }
 
 
@@ -81,15 +65,88 @@ MainWindow::~MainWindow()
 }
 
 
+void MainWindow::closeEvent(QCloseEvent *e)
+{
+  saveSettings();
+  e->accept();
+}
+
+
+void MainWindow::saveSettings(void)
+{
+  Q_D(MainWindow);
+  d->settings.setValue("mainwindow/geometry", saveGeometry());
+  d->settings.setValue("mainwindow/state", saveState());
+  d->settings.setValue("options/lastSaveMarkovDirectory", d->lastSaveMarkovDirectory);
+  d->settings.setValue("options/lastLoadMarkovDirectory", d->lastLoadMarkovDirectory);
+  d->settings.setValue("options/lastLoadTextDirectory", d->lastLoadTextDirectory);
+  d->settings.sync();
+}
+
+
+void MainWindow::restoreSettings(void)
+{
+  Q_D(MainWindow);
+  restoreGeometry(d->settings.value("mainwindow/geometry").toByteArray());
+  restoreState(d->settings.value("mainwindow/state").toByteArray());
+  d->lastSaveMarkovDirectory = d->settings.value("options/lastSaveMarkovDirectory").toString();
+  d->lastLoadMarkovDirectory = d->settings.value("options/lastLoadMarkovDirectory").toString();
+  d->lastLoadTextDirectory = d->settings.value("options/lastLoadTextDirectory").toString();
+}
+
+
+void MainWindow::generateText(void)
+{
+  Q_D(MainWindow);
+  std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
+  MarkovNode *node = Q_NULLPTR;
+  QString lastToken;
+  QString result;
+  int N = ui->wordCountSpinBox->value();
+  while (N-- > 0) {
+    if (node == Q_NULLPTR) {
+      node = d->markovChain->at(nDist(d->rng));
+      if (!result.isEmpty()) {
+        result += " \\\n";
+      }
+    }
+    const QString &token = node->token();
+    if (!lastToken.isEmpty() && token != "." && token != "," && token != ":" && token != ";" && token != "?" && token != "!" && token != ")") {
+      result += " ";
+    }
+    result += token;
+    lastToken = token;
+    node = node->selectSuccessor(d->pDist(d->rng));
+  }
+  ui->plainTextEdit->setPlainText(result);
+}
+
+
+void MainWindow::onLoadTextFiles(void)
+{
+  Q_D(MainWindow);
+  QStringList textFilenames = QFileDialog::getOpenFileNames(this, tr("Load text files ..."), d->lastLoadTextDirectory);
+  if (!textFilenames.isEmpty()) {
+    foreach (QString textFilename, textFilenames) {
+      d->lastLoadTextDirectory = QFileInfo(textFilename).absolutePath();
+      d->markovChain->readFromTextFile(textFilename);
+    }
+    d->markovChain->postProcess();
+  }
+  generateText();
+}
+
+
 void MainWindow::onSaveMarkovChain(void)
 {
   Q_D(MainWindow);
-  QString markovFilename = QFileDialog::getSaveFileName(this, tr("Save Markov chain to ..."));
+  QString markovFilename = QFileDialog::getSaveFileName(this, tr("Save Markov chain to ..."), d->lastSaveMarkovDirectory);
   if (!markovFilename.isEmpty()) {
+    d->lastSaveMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     QFile outFile(markovFilename);
     if (outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
       QJsonDocument json = QJsonDocument::fromVariant(d->markovChain->toVariantList());
-      outFile.write(json.toJson());
+      outFile.write(json.toJson(QJsonDocument::Compact));
       outFile.close();
     }
   }
@@ -98,5 +155,12 @@ void MainWindow::onSaveMarkovChain(void)
 
 void MainWindow::onLoadMarkovChain(void)
 {
-
+  Q_D(MainWindow);
+  QString markovFilename = QFileDialog::getOpenFileName(this, tr("Load Markov chain from ..."), d->lastLoadMarkovDirectory);
+  if (!markovFilename.isEmpty()) {
+    d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
+    d->markovChain->readFromJsonFile(markovFilename);
+    d->markovChain->postProcess();
+    generateText();
+  }
 }

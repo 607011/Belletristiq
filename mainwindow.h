@@ -10,6 +10,7 @@
 
 #include <QMainWindow>
 #include <QScopedPointer>
+#include <QCloseEvent>
 
 namespace Ui {
 class MainWindow;
@@ -25,9 +26,18 @@ public:
   explicit MainWindow(QWidget *parent = Q_NULLPTR);
   ~MainWindow();
 
+protected:
+  void closeEvent(QCloseEvent *);
+
 private slots:
+  void onLoadTextFiles(void);
   void onSaveMarkovChain(void);
   void onLoadMarkovChain(void);
+  void generateText(void);
+
+private:
+  void saveSettings(void);
+  void restoreSettings(void);
 
 private:
   Ui::MainWindow *ui;

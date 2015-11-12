@@ -23,11 +23,13 @@ public:
   void add(const QStringList &tokenList);
   const MarkovNodeList &nodes(void) const;
   void postProcess(void);
+  void clear(void);
 
   int count(void) const;
   MarkovNode *at(int);
 
-  void readFromFile(const QString &filename);
+  void readFromTextFile(const QString &filename);
+  void readFromJsonFile(const QString &filename);
 
   QVariantList toVariantList(void) const;
 
