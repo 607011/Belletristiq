@@ -1,6 +1,12 @@
-/* Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net> - All rights reserved. */
+/*
+ * Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net>
+ * All rights reserved.
+ *
+ */
+
 
 #include "markovedge.h"
+#include "markovnode.h"
 
 MarkovEdge::MarkovEdge(MarkovNode *node)
   : mNode(node)
@@ -38,4 +44,13 @@ void MarkovEdge::setProbability(qreal p)
 void MarkovEdge::increaseCount(void)
 {
   ++mCount;
+}
+
+
+QVariantMap MarkovEdge::toVariantMap(void) const
+{
+  QVariantMap map;
+  map["count"] = mCount;
+  map["node_id"] = mNode->id();
+  return map;
 }

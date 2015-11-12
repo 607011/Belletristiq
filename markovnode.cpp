@@ -1,14 +1,22 @@
-/* Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net> - All rights reserved. */
+/*
+ * Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net>
+ * All rights reserved.
+ *
+ */
+
 
 #include "markovnode.h"
 #include "markovedge.h"
 
 #include <QtGlobal>
 #include <QDebug>
+#include <QJsonArray>
+#include <QJsonObject>
 
 
-MarkovNode::MarkovNode(const QString &token)
+MarkovNode::MarkovNode(const QString &token, int id)
   : mToken(token)
+  , mId(id)
 {
   /* ... */
 }
@@ -62,6 +70,12 @@ const QString &MarkovNode::token(void) const
 }
 
 
+int MarkovNode::id(void) const
+{
+  return mId;
+}
+
+
 MarkovNode *MarkovNode::selectSuccessor(qreal p)
 {
   foreach(MarkovEdge *edge, mSuccessors) {
@@ -69,6 +83,27 @@ MarkovNode *MarkovNode::selectSuccessor(qreal p)
       return edge->node();
     }
   }
+  return Q_NULLPTR;
+}
+
+
+QVariantMap MarkovNode::toVariantMap(void) const
+{
+  QVariantMap map;
+  map["token"] = mToken;
+  map["id"] = mId;
+  QVariantList successors;
+  foreach (MarkovEdge *successor, mSuccessors) {
+    successors.append(successor->toVariantMap());
+  }
+  map["successors"] = successors;
+  return map;
+}
+
+
+MarkovNode *MarkovNode::fromVariantMap(const QVariantMap &)
+{
+  // TODO ...
   return Q_NULLPTR;
 }
 

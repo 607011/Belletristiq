@@ -1,10 +1,15 @@
-/* Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net> - All rights reserved. */
+/*
+ * Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net>
+ * All rights reserved.
+ *
+ */
 
 #ifndef __MARKOVCHAIN_H_
 #define __MARKOVCHAIN_H_
 
 
 #include <QDebug>
+#include <QVariantList>
 
 #include "markovnode.h"
 
@@ -22,9 +27,13 @@ public:
   int count(void) const;
   MarkovNode *at(int);
 
+  void readFromFile(const QString &filename);
+
+  QVariantList toVariantList(void) const;
+
 private:
   bool find(const QString &token, MarkovNodeList::iterator &i);
-
+  int mCurrentNodeId;
   MarkovNodeList mNodeList;
 };
 

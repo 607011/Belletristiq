@@ -1,10 +1,15 @@
-/* Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net> - All rights reserved. */
+/*
+ * Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net>
+ * All rights reserved.
+ *
+ */
 
 #include "markovchain.h"
-
-
+#include <QRegExp>
+#include <QFile>
 
 MarkovChain::MarkovChain(void)
+  : mCurrentNodeId(0)
 {
   /* ... */
 }
@@ -27,6 +32,42 @@ int MarkovChain::count(void) const
 MarkovNode *MarkovChain::at(int idx)
 {
   return mNodeList.at(idx);
+}
+
+void MarkovChain::readFromFile(const QString &filename)
+{
+  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?])?", Qt::CaseSensitive, QRegExp::RegExp);
+  QFile inFile(filename);
+  if (inFile.open(QIODevice::ReadOnly)) {
+    QStringList tokens;
+    while (!inFile.atEnd()) {
+      const QString &line = QString::fromUtf8(inFile.readLine());
+      int pos = 0;
+      while ((pos = reTokens.indexIn(line, pos)) != -1) {
+        if (reTokens.captureCount() > 0) {
+          tokens << reTokens.cap(1);
+        }
+        if (reTokens.captureCount() > 1 && !reTokens.cap(2).isEmpty()) {
+          tokens << reTokens.cap(2);
+        }
+        pos += reTokens.matchedLength();
+      }
+    }
+    if (!tokens.isEmpty()) {
+      add(tokens);
+    }
+    inFile.close();
+  }
+}
+
+
+QVariantList MarkovChain::toVariantList(void) const
+{
+  QVariantList list;
+  foreach (MarkovNode *node, mNodeList) {
+    list.append(node->toVariantMap());
+  }
+  return list;
 }
 
 
@@ -58,7 +99,7 @@ void MarkovChain::add(const QStringList &tokenList)
     bool contained = find(token, idx);
     MarkovNode *curr = *idx;
     if (!contained) {
-      curr = new MarkovNode(token);
+      curr = new MarkovNode(token, ++mCurrentNodeId);
       mNodeList.insert(idx, curr);
     }
     if (prev != Q_NULLPTR) {
@@ -67,7 +108,6 @@ void MarkovChain::add(const QStringList &tokenList)
     prev = curr;
   }
 }
-
 
 
 QDebug operator<<(QDebug debug, const MarkovChain &chain)
