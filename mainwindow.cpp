@@ -80,6 +80,7 @@ void MainWindow::saveSettings(void)
   d->settings.setValue("options/lastSaveMarkovDirectory", d->lastSaveMarkovDirectory);
   d->settings.setValue("options/lastLoadMarkovDirectory", d->lastLoadMarkovDirectory);
   d->settings.setValue("options/lastLoadTextDirectory", d->lastLoadTextDirectory);
+  d->settings.setValue("options/wordCount", ui->wordCountSpinBox->value());
   d->settings.sync();
 }
 
@@ -92,6 +93,7 @@ void MainWindow::restoreSettings(void)
   d->lastSaveMarkovDirectory = d->settings.value("options/lastSaveMarkovDirectory").toString();
   d->lastLoadMarkovDirectory = d->settings.value("options/lastLoadMarkovDirectory").toString();
   d->lastLoadTextDirectory = d->settings.value("options/lastLoadTextDirectory").toString();
+  ui->wordCountSpinBox->setValue(d->settings.value("options/wordCount", 500).toInt());
 }
 
 
@@ -140,7 +142,7 @@ void MainWindow::onLoadTextFiles(void)
 void MainWindow::onSaveMarkovChain(void)
 {
   Q_D(MainWindow);
-  QString markovFilename = QFileDialog::getSaveFileName(this, tr("Save Markov chain to ..."), d->lastSaveMarkovDirectory);
+  QString markovFilename = QFileDialog::getSaveFileName(this, tr("Save Markov chain to ..."), d->lastSaveMarkovDirectory, tr("Markov files (*.json *.dat *.markov)"));
   if (!markovFilename.isEmpty()) {
     d->lastSaveMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     QFile outFile(markovFilename);
@@ -156,7 +158,7 @@ void MainWindow::onSaveMarkovChain(void)
 void MainWindow::onLoadMarkovChain(void)
 {
   Q_D(MainWindow);
-  QString markovFilename = QFileDialog::getOpenFileName(this, tr("Load Markov chain from ..."), d->lastLoadMarkovDirectory);
+  QString markovFilename = QFileDialog::getOpenFileName(this, tr("Load Markov chain from ..."), d->lastLoadMarkovDirectory, tr("Markov files (*.json *.dat *.markov)"));
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->readFromJsonFile(markovFilename);
