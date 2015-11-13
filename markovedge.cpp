@@ -66,6 +66,6 @@ QVariantMap MarkovEdge::toVariantMap(void) const
 {
   QVariantMap map;
   map["count"] = mCount;
-  map["node_id"] = mNode->id();
+  map["token"] = mNode->token();
   return map;
 }

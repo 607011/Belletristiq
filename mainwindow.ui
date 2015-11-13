@@ -86,7 +86,14 @@
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
+   <widget class="QMenu" name="menuExtras">
+    <property name="title">
+     <string>Extras</string>
+    </property>
+    <addaction name="actionResetMarkovChain"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menuExtras"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSaveMarkovChain">
@@ -116,6 +123,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionResetMarkovChain">
+   <property name="text">
+    <string>Reset Markov chain</string>
    </property>
   </action>
  </widget>

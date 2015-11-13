@@ -14,9 +14,8 @@
 #include <QJsonObject>
 
 
-MarkovNode::MarkovNode(const QString &token, int id)
+MarkovNode::MarkovNode(const QString &token)
   : mToken(token)
-  , mId(id)
 {
   /* ... */
 }
@@ -64,33 +63,15 @@ const MarkovNode::MarkovEdgeList &MarkovNode::successors(void) const
 }
 
 
-const QVariantList &MarkovNode::preliminarySuccessors(void) const
-{
-  return mPreliminarySuccessors;
-}
-
-
 void MarkovNode::setSuccessors(const MarkovEdgeList &successors)
 {
   mSuccessors = successors;
 }
 
 
-void MarkovNode::setPreliminarySuccessors(const QVariantList &successors)
-{
-  mPreliminarySuccessors = successors;
-}
-
-
 const QString &MarkovNode::token(void) const
 {
   return mToken;
-}
-
-
-int MarkovNode::id(void) const
-{
-  return mId;
 }
 
 
@@ -105,42 +86,24 @@ MarkovNode *MarkovNode::selectSuccessor(qreal p)
 }
 
 
-void MarkovNode::postProcess(const MarkovChain *chain)
-{
-  mSuccessors.clear();
-  foreach (QVariant s, mPreliminarySuccessors) {
-    QVariantMap successor = s.toMap();
-    const int id = successor["node_id"].toInt();
-    const int count = successor["count"].toInt();
-    foreach (MarkovNode *node, chain->nodes()) {
-      if (node->id() == id) {
-        MarkovEdge *successor = new MarkovEdge(node, count);
-        mSuccessors.append(successor);
-        break;
-      }
-    }
-  }
-}
-
-
 QVariantMap MarkovNode::toVariantMap(void) const
 {
   QVariantMap map;
-  map["token"] = mToken;
-  map["id"] = mId;
   QVariantList successors;
   foreach (MarkovEdge *successor, mSuccessors) {
     successors.append(successor->toVariantMap());
   }
-  map["successors"] = successors;
+  map[mToken] = successors;
   return map;
 }
 
 
 MarkovNode *MarkovNode::fromVariantMap(const QVariantMap &map)
 {
-  MarkovNode *node = new MarkovNode(map["token"].toString(), map["id"].toInt());
-  node->setPreliminarySuccessors(map["successors"].toList());
+  const QString &token = map.keys().first();
+  MarkovNode *node = new MarkovNode(token);
+  QVariantList successors = map[token].toList();
+  // TODO: evaluate successors ...
   return node;
 }
 

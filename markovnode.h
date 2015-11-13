@@ -22,21 +22,16 @@ class MarkovNode {
 public:
   typedef QList<MarkovEdge*> MarkovEdgeList;
 
-  explicit MarkovNode(const QString &mToken, int id);
+  explicit MarkovNode(const QString &mToken);
 
   void addSuccessor(MarkovNode *node);
   void calcProbabilities(void);
 
   const MarkovEdgeList &successors(void) const;
   void setSuccessors(const MarkovEdgeList &successors);
-  const QVariantList &preliminarySuccessors(void) const;
-  void setPreliminarySuccessors(const QVariantList &successors);
   const QString &token(void) const;
-  int id(void) const;
 
   MarkovNode *selectSuccessor(qreal p);
-
-  void postProcess(const MarkovChain *chain);
 
   QVariantMap toVariantMap(void) const;
 
@@ -44,9 +39,7 @@ public:
 
 private:
   QString mToken;
-  int mId;
   MarkovEdgeList mSuccessors;
-  QVariantList mPreliminarySuccessors;
 };
 
 

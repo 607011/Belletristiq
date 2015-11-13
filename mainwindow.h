@@ -33,6 +33,7 @@ private slots:
   void onLoadTextFiles(void);
   void onSaveMarkovChain(void);
   void onLoadMarkovChain(void);
+  void onResetMarkovChain(void);
   void generateText(void);
 
 private:

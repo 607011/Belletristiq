@@ -30,7 +30,12 @@ public:
   {
     rng.seed(QDateTime::currentDateTimeUtc().toTime_t());
   }
-  ~MainWindowPrivate() {}
+  ~MainWindowPrivate()
+  {
+    if (markovChain != Q_NULLPTR) {
+      delete markovChain;
+    }
+  }
 
   MarkovChain *markovChain;
   std::mt19937 rng;
@@ -53,6 +58,7 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionLoadTextFiles, SIGNAL(triggered(bool)), SLOT(onLoadTextFiles()));
   QObject::connect(ui->actionSaveMarkovChain, SIGNAL(triggered(bool)), SLOT(onSaveMarkovChain()));
   QObject::connect(ui->actionLoadMarkovChain, SIGNAL(triggered(bool)), SLOT(onLoadMarkovChain()));
+  QObject::connect(ui->actionResetMarkovChain, SIGNAL(triggered(bool)), SLOT(onResetMarkovChain()));
   QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(generateText()));
 
   restoreSettings();
@@ -107,7 +113,7 @@ void MainWindow::generateText(void)
   int N = ui->wordCountSpinBox->value();
   while (N-- > 0) {
     if (node == Q_NULLPTR) {
-      node = d->markovChain->at(nDist(d->rng));
+      node = d->markovChain->at(nDist(d->rng)); // XXX
       if (!result.isEmpty()) {
         result += " \\\n";
       }
@@ -127,7 +133,11 @@ void MainWindow::generateText(void)
 void MainWindow::onLoadTextFiles(void)
 {
   Q_D(MainWindow);
-  QStringList textFilenames = QFileDialog::getOpenFileNames(this, tr("Load text files ..."), d->lastLoadTextDirectory);
+  QStringList textFilenames = QFileDialog::getOpenFileNames(
+        this,
+        tr("Load text files ..."),
+        d->lastLoadTextDirectory,
+        tr("Text files (*.txt)"));
   if (!textFilenames.isEmpty()) {
     foreach (QString textFilename, textFilenames) {
       d->lastLoadTextDirectory = QFileInfo(textFilename).absolutePath();
@@ -142,15 +152,14 @@ void MainWindow::onLoadTextFiles(void)
 void MainWindow::onSaveMarkovChain(void)
 {
   Q_D(MainWindow);
-  QString markovFilename = QFileDialog::getSaveFileName(this, tr("Save Markov chain to ..."), d->lastSaveMarkovDirectory, tr("Markov files (*.json *.dat *.markov)"));
+  QString markovFilename = QFileDialog::getSaveFileName(
+        this,
+        tr("Save Markov chain to ..."),
+        d->lastSaveMarkovDirectory,
+        tr("Markov files (*.json *.dat *.markov)"));
   if (!markovFilename.isEmpty()) {
     d->lastSaveMarkovDirectory = QFileInfo(markovFilename).absolutePath();
-    QFile outFile(markovFilename);
-    if (outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-      QJsonDocument json = QJsonDocument::fromVariant(d->markovChain->toVariantList());
-      outFile.write(json.toJson(QJsonDocument::Compact));
-      outFile.close();
-    }
+    d->markovChain->save(markovFilename, false);
   }
 }
 
@@ -158,11 +167,24 @@ void MainWindow::onSaveMarkovChain(void)
 void MainWindow::onLoadMarkovChain(void)
 {
   Q_D(MainWindow);
-  QString markovFilename = QFileDialog::getOpenFileName(this, tr("Load Markov chain from ..."), d->lastLoadMarkovDirectory, tr("Markov files (*.json *.dat *.markov)"));
+  QString markovFilename = QFileDialog::getOpenFileName(
+        this,
+        tr("Load Markov chain from ..."),
+        d->lastLoadMarkovDirectory,
+        tr("Markov files (*.json *.dat *.markov)"));
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->readFromJsonFile(markovFilename);
-    d->markovChain->postProcess();
     generateText();
   }
+}
+
+
+void MainWindow::onResetMarkovChain(void)
+{
+  Q_D(MainWindow);
+  // TODO: QMessageBox::question() should ask user if she really wants to reset the Markov chain
+  d->markovChain->clear();
+  ui->plainTextEdit->clear();
+  ui->statusbar->showMessage(tr("Markov chain reset."), 3000);
 }

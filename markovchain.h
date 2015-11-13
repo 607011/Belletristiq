@@ -9,34 +9,36 @@
 
 
 #include <QDebug>
-#include <QVariantList>
+#include <QByteArray>
+#include <QVariantMap>
 
 #include "markovnode.h"
 
 
 class MarkovChain {
 public:
-  typedef QList<MarkovNode*> MarkovNodeList;
+  typedef QMap<QString, MarkovNode*> MarkovNodeMap;
 
   MarkovChain(void);
 
   void add(const QStringList &tokenList);
-  const MarkovNodeList &nodes(void) const;
+  const MarkovNodeMap &nodes(void) const;
   void postProcess(void);
   void clear(void);
 
   int count(void) const;
   MarkovNode *at(int);
 
-  void readFromTextFile(const QString &filename);
-  void readFromJsonFile(const QString &filename);
+  bool readFromTextFile(const QString &filename);
+  bool readFromJsonFile(const QString &filename);
+  void save(const QString &filename, bool compressed);
 
-  QVariantList toVariantList(void) const;
+  QVariantMap toVariantMap(void);
+
+  static const QByteArray FileHeader;
 
 private:
-  bool find(const QString &token, MarkovNodeList::iterator &i);
-  int mCurrentNodeId;
-  MarkovNodeList mNodeList;
+  MarkovNodeMap mNodeMap;
 };
 
 

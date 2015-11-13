@@ -9,12 +9,15 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
-#include <QJsonObject>
 #include <QJsonValue>
+#include <QJsonObject>
+#include <QtAlgorithms>
+
+
+const QByteArray MarkovChain::FileHeader("MRKV", 4);
 
 
 MarkovChain::MarkovChain(void)
-  : mCurrentNodeId(0)
 {
   /* ... */
 }
@@ -22,7 +25,7 @@ MarkovChain::MarkovChain(void)
 
 void MarkovChain::postProcess(void)
 {
-  foreach (MarkovNode *node, mNodeList) {
+  foreach (MarkovNode *node, mNodeMap) {
     node->calcProbabilities();
   }
 }
@@ -30,24 +33,24 @@ void MarkovChain::postProcess(void)
 
 void MarkovChain::clear(void)
 {
-  mCurrentNodeId = 0;
-  mNodeList.clear();
+  mNodeMap.clear();
 }
 
 
 int MarkovChain::count(void) const
 {
-  return mNodeList.count();
+  return mNodeMap.count();
 }
 
 
 MarkovNode *MarkovChain::at(int idx)
 {
-  return mNodeList.at(idx);
+  MarkovNodeMap::iterator node = mNodeMap.begin() + idx;
+  return *node;
 }
 
 
-void MarkovChain::readFromTextFile(const QString &filename)
+bool MarkovChain::readFromTextFile(const QString &filename)
 {
   static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
   QFile inFile(filename);
@@ -70,28 +73,62 @@ void MarkovChain::readFromTextFile(const QString &filename)
       add(tokens);
     }
     inFile.close();
+    postProcess();
+    return true;
   }
+  return false;
 }
 
 
-void MarkovChain::readFromJsonFile(const QString &filename)
+bool MarkovChain::readFromJsonFile(const QString &filename)
 {
+  qDebug() << "MarkovChain::readFromJsonFile(" << filename << ")";
+  bool ok = false;
   QFile inFile(filename);
   if (inFile.open(QIODevice::ReadOnly)) {
-    QByteArray jsonData = inFile.readAll();
+    QByteArray header(4, '\0');
+    inFile.read(header.data(), 4);
+    bool compressed = (header == FileHeader);
+    qDebug() << "compressed:" << compressed;
+    if (!compressed) {
+      inFile.seek(0);
+    }
+    QByteArray jsonData = compressed ? qUncompress(inFile.readAll()) : inFile.readAll();
+    qDebug() << jsonData.mid(0, 500);
     QJsonParseError jsonError;
     QJsonDocument json = QJsonDocument::fromJson(jsonData, &jsonError);
     if (jsonError.error == QJsonParseError::NoError) {
-      QJsonArray nodes = json.array();
-      foreach (QJsonValue node, nodes) {
-        MarkovNode *newNode = MarkovNode::fromVariantMap(node.toObject().toVariantMap());
-        mNodeList.append(newNode);
+      QVariantMap nodes = json.toVariant().toMap(); // TODO ...
+      foreach (QString token, nodes.keys()) {
+        MarkovNode *newNode = MarkovNode::fromVariantMap(nodes[token].toMap());
+        mNodeMap.insert(newNode->token(), newNode);
       }
-      foreach (MarkovNode *node, mNodeList) {
-        node->postProcess(this);
-      }
+      ok = true;
+    }
+    else {
+      // TODO: ...
     }
     inFile.close();
+    if (ok) {
+      postProcess();
+    }
+  }
+  return ok;
+}
+
+
+void MarkovChain::save(const QString &filename, bool compressed)
+{
+  QFile outFile(filename);
+  if (outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    QJsonDocument json = QJsonDocument::fromVariant(toVariantMap());
+    QByteArray data = json.toJson(QJsonDocument::Indented);
+    if (compressed) {
+      outFile.write(FileHeader);
+      data = qCompress(data, 9);
+    }
+    outFile.write(data);
+    outFile.close();
   }
 }
 
@@ -100,12 +137,10 @@ void MarkovChain::add(const QStringList &tokenList)
 {
   MarkovNode *prev = Q_NULLPTR;
   foreach (QString token, tokenList) {
-    MarkovNodeList::iterator idx;
-    bool contained = find(token, idx);
-    MarkovNode *curr = *idx;
-    if (!contained) {
-      curr = new MarkovNode(token, ++mCurrentNodeId);
-      mNodeList.insert(idx, curr);
+    MarkovNode *curr = mNodeMap.value(token, Q_NULLPTR);
+    if (curr == Q_NULLPTR) {
+      curr = new MarkovNode(token);
+      mNodeMap.insert(curr->token(), curr);
     }
     if (prev != Q_NULLPTR) {
       prev->addSuccessor(curr);
@@ -115,33 +150,19 @@ void MarkovChain::add(const QStringList &tokenList)
 }
 
 
-QVariantList MarkovChain::toVariantList(void) const
+QVariantMap MarkovChain::toVariantMap(void)
 {
-  QVariantList list;
-  foreach (MarkovNode *node, mNodeList) {
-    list.append(node->toVariantMap());
+  QVariantMap map;
+  foreach (MarkovNode *node, mNodeMap) {
+    map.unite(node->toVariantMap());
   }
-  return list;
+  return map;
 }
 
 
-const MarkovChain::MarkovNodeList &MarkovChain::nodes(void) const
+const MarkovChain::MarkovNodeMap &MarkovChain::nodes(void) const
 {
-  return mNodeList;
-}
-
-
-bool MarkovChain::find(const QString &token, MarkovNodeList::iterator &i)
-{
-  for (i = mNodeList.begin(); i != mNodeList.end(); ++i) {
-    if (token == (*i)->token()) {
-      return true;
-    }
-    else if (token < (*i)->token()) {
-      return false;
-    }
-  }
-  return false;
+  return mNodeMap;
 }
 
 
