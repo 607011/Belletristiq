@@ -7,7 +7,6 @@
 #ifndef __MARKOVCHAIN_H_
 #define __MARKOVCHAIN_H_
 
-
 #include <QDebug>
 #include <QByteArray>
 #include <QVariantMap>
@@ -15,7 +14,9 @@
 #include "markovnode.h"
 
 
-class MarkovChain {
+class MarkovChain : public QObject {
+  Q_OBJECT
+
 public:
   typedef QMap<QString, MarkovNode*> MarkovNodeMap;
 
@@ -25,6 +26,8 @@ public:
   const MarkovNodeMap &nodes(void) const;
   void postProcess(void);
   void clear(void);
+  bool isCancelled(void) const;
+  void cancel(void);
 
   int count(void) const;
   MarkovNode *at(int);
@@ -37,8 +40,13 @@ public:
 
   static const QByteArray FileHeader;
 
+signals:
+  void progressRangeChanged(int, int);
+  void progressValueChanged(int);
+
 private:
   MarkovNodeMap mNodeMap;
+  volatile bool mCancelled;
 };
 
 

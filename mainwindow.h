@@ -11,6 +11,7 @@
 #include <QMainWindow>
 #include <QScopedPointer>
 #include <QCloseEvent>
+#include <QString>
 
 namespace Ui {
 class MainWindow;
@@ -26,6 +27,9 @@ public:
   explicit MainWindow(QWidget *parent = Q_NULLPTR);
   ~MainWindow();
 
+signals:
+  void textFilesLoadFinished(void);
+
 protected:
   void closeEvent(QCloseEvent *);
 
@@ -35,10 +39,8 @@ private slots:
   void onLoadMarkovChain(void);
   void onResetMarkovChain(void);
   void generateText(void);
-
-private:
-  void saveSettings(void);
-  void restoreSettings(void);
+  void onTextFilesLoadCanceled(void);
+  void onTextFilesLoaded(void);
 
 private:
   Ui::MainWindow *ui;
@@ -46,6 +48,12 @@ private:
   QScopedPointer<MainWindowPrivate> d_ptr;
   Q_DECLARE_PRIVATE(MainWindow)
   Q_DISABLE_COPY(MainWindow)
+
+private:
+  void saveSettings(void);
+  void restoreSettings(void);
+  void loadTextFilesThread(const QStringList &textFileNames);
+
 };
 
 #endif // __MAINWINDOW_H_

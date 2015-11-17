@@ -7,6 +7,7 @@
 #include "markovchain.h"
 #include <QRegExp>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonValue>
@@ -18,6 +19,7 @@ const QByteArray MarkovChain::FileHeader("MRKV", 4);
 
 
 MarkovChain::MarkovChain(void)
+  : mCancelled(false)
 {
   /* ... */
 }
@@ -25,8 +27,10 @@ MarkovChain::MarkovChain(void)
 
 void MarkovChain::postProcess(void)
 {
-  foreach (MarkovNode *node, mNodeMap) {
-    node->calcProbabilities();
+  if (!mCancelled) {
+    foreach (MarkovNode *node, mNodeMap) {
+      node->calcProbabilities();
+    }
   }
 }
 
@@ -34,6 +38,18 @@ void MarkovChain::postProcess(void)
 void MarkovChain::clear(void)
 {
   mNodeMap.clear();
+}
+
+
+bool MarkovChain::isCancelled(void) const
+{
+  return mCancelled;
+}
+
+
+void MarkovChain::cancel(void)
+{
+  mCancelled = true;
 }
 
 
@@ -53,28 +69,36 @@ MarkovNode *MarkovChain::at(int idx)
 bool MarkovChain::readFromTextFile(const QString &filename)
 {
   static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
-  QFile inFile(filename);
-  if (inFile.open(QIODevice::ReadOnly)) {
-    QStringList tokens;
-    while (!inFile.atEnd()) {
-      const QString &line = QString::fromUtf8(inFile.readLine());
-      int pos = 0;
-      while ((pos = reTokens.indexIn(line, pos)) != -1) {
-        if (reTokens.captureCount() > 0) {
-          tokens << reTokens.cap(1);
+  mCancelled = false;
+  QFileInfo fi(filename);
+  if (fi.isReadable() && fi.isFile()) {
+    QFile inFile(filename);
+    if (inFile.open(QIODevice::ReadOnly)) {
+      int totalSize = 0;
+      QStringList tokens;
+      while (!inFile.atEnd()) {
+        const QString &line = QString::fromUtf8(inFile.readLine());
+        int pos = 0;
+        while ((pos = reTokens.indexIn(line, pos)) != -1) {
+          const QString &t1 = reTokens.cap(1);
+          if (reTokens.captureCount() > 0 && !t1.isEmpty()) {
+            totalSize += t1.length();
+            tokens << t1;
+          }
+          const QString &t2 = reTokens.cap(2);
+          if (reTokens.captureCount() > 1 && !t2.isEmpty()) {
+            tokens << t2;
+          }
+          totalSize += t1.length() + t2.length();
+          pos += reTokens.matchedLength();
         }
-        if (reTokens.captureCount() > 1 && !reTokens.cap(2).isEmpty()) {
-          tokens << reTokens.cap(2);
-        }
-        pos += reTokens.matchedLength();
       }
+      emit progressRangeChanged(0, totalSize);
+      if (!tokens.isEmpty()) {
+        add(tokens);
+      }
+      inFile.close();
     }
-    if (!tokens.isEmpty()) {
-      add(tokens);
-    }
-    inFile.close();
-    postProcess();
-    return true;
   }
   return false;
 }
@@ -84,6 +108,7 @@ bool MarkovChain::readFromJsonFile(const QString &filename)
 {
   qDebug() << "MarkovChain::readFromJsonFile(" << filename << ")";
   bool ok = false;
+  mCancelled = false;
   QFile inFile(filename);
   if (inFile.open(QIODevice::ReadOnly)) {
     QByteArray header(4, '\0');
@@ -136,6 +161,7 @@ void MarkovChain::save(const QString &filename, bool compressed)
 void MarkovChain::add(const QStringList &tokenList)
 {
   MarkovNode *prev = Q_NULLPTR;
+  int bytesProcessed = 0;
   foreach (QString token, tokenList) {
     MarkovNode *curr = mNodeMap.value(token, Q_NULLPTR);
     if (curr == Q_NULLPTR) {
@@ -146,6 +172,11 @@ void MarkovChain::add(const QStringList &tokenList)
       prev->addSuccessor(curr);
     }
     prev = curr;
+    bytesProcessed += token.length();
+    emit progressValueChanged(int(bytesProcessed));
+    if (mCancelled) {
+      break;
+    }
   }
 }
 
