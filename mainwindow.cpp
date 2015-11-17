@@ -6,7 +6,9 @@
 
 
 #include <random>
+#include <functional>
 
+#include <QtConcurrent>
 #include <QSettings>
 #include <QString>
 #include <QDateTime>
@@ -48,6 +50,12 @@ MainWindow::MainWindow(QWidget *parent)
   , d_ptr(new MainWindowPrivate)
 {
   ui->setupUi(this);
+
+  ui->progressBar->hide();
+
+  QObject::connect(this, SIGNAL(textFilesLoadFinished()), this, SLOT(onTextFilesLoaded()));
+  QObject::connect(d_ptr->markovChain, SIGNAL(progressValueChanged(int)), ui->progressBar, SLOT(setValue(int)));
+  QObject::connect(d_ptr->markovChain, SIGNAL(progressRangeChanged(int, int)), ui->progressBar, SLOT(setRange(int,int)));
 
   QObject::connect(ui->actionExit, SIGNAL(triggered(bool)), SLOT(close()));
   QObject::connect(ui->actionLoadTextFiles, SIGNAL(triggered(bool)), SLOT(onLoadTextFiles()));
@@ -107,7 +115,10 @@ void MainWindow::generateText(void)
   int N = ui->wordCountSpinBox->value();
   while (N-- > 0) {
     if (node == Q_NULLPTR) {
-      node = d->markovChain->at(nDist(d->rng));
+      int nTries = d->markovChain->count() / 2;
+      do {
+        node = d->markovChain->at(nDist(d->rng));
+      } while (!node->token().at(0).isUpper() && nTries-- > 0);
       if (!result.isEmpty()) {
         result += " \\\n";
       }
@@ -124,18 +135,45 @@ void MainWindow::generateText(void)
 }
 
 
+void MainWindow::onTextFilesLoadCanceled(void)
+{
+  ui->progressBar->hide();
+}
+
+
+void MainWindow::onTextFilesLoaded(void)
+{
+  ui->statusbar->showMessage(tr("Loaded."), 3000);
+  ui->progressBar->hide();
+  ui->generatePushButton->setEnabled(true);
+  setCursor(Qt::ArrowCursor);
+  generateText();
+}
+
+
+void MainWindow::loadTextFilesThread(const QStringList &textFileNames)
+{
+  Q_D(MainWindow);
+  foreach (QString textFilename, textFileNames) {
+    qDebug() << "Reading" << textFilename << "...";
+    d->markovChain->readFromTextFile(textFilename);
+  }
+  qDebug() << "Postprocessing ...";
+  d->markovChain->postProcess();
+  emit textFilesLoadFinished();
+}
+
+
 void MainWindow::onLoadTextFiles(void)
 {
   Q_D(MainWindow);
   QStringList textFilenames = QFileDialog::getOpenFileNames(this, tr("Load text files ..."), d->lastLoadTextDirectory);
   if (!textFilenames.isEmpty()) {
-    foreach (QString textFilename, textFilenames) {
-      d->lastLoadTextDirectory = QFileInfo(textFilename).absolutePath();
-      d->markovChain->readFromTextFile(textFilename);
-    }
-    d->markovChain->postProcess();
+    setCursor(Qt::WaitCursor);
+    d->lastLoadTextDirectory = QFileInfo(textFilenames.first()).absolutePath();
+    ui->progressBar->show();
+    QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);
   }
-  generateText();
 }
 
 

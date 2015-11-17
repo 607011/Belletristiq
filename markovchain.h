@@ -7,14 +7,16 @@
 #ifndef __MARKOVCHAIN_H_
 #define __MARKOVCHAIN_H_
 
-
 #include <QDebug>
+#include <QObject>
 #include <QVariantList>
 
 #include "markovnode.h"
 
 
-class MarkovChain {
+class MarkovChain : public QObject {
+  Q_OBJECT
+
 public:
   typedef QList<MarkovNode*> MarkovNodeList;
 
@@ -32,6 +34,10 @@ public:
   void readFromJsonFile(const QString &filename);
 
   QVariantList toVariantList(void) const;
+
+signals:
+  void progressRangeChanged(int, int);
+  void progressValueChanged(int);
 
 private:
   bool find(const QString &token, MarkovNodeList::iterator &i);

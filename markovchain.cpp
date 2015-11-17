@@ -7,10 +7,12 @@
 #include "markovchain.h"
 #include <QRegExp>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QMutexLocker>
 
 
 MarkovChain::MarkovChain(void)
@@ -50,26 +52,30 @@ MarkovNode *MarkovChain::at(int idx)
 void MarkovChain::readFromTextFile(const QString &filename)
 {
   static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
-  QFile inFile(filename);
-  if (inFile.open(QIODevice::ReadOnly)) {
-    QStringList tokens;
-    while (!inFile.atEnd()) {
-      const QString &line = QString::fromUtf8(inFile.readLine());
-      int pos = 0;
-      while ((pos = reTokens.indexIn(line, pos)) != -1) {
-        if (reTokens.captureCount() > 0) {
-          tokens << reTokens.cap(1);
+  QFileInfo fi(filename);
+  if (fi.isReadable() && fi.isFile()) {
+    QFile inFile(filename);
+    if (inFile.open(QIODevice::ReadOnly)) {
+      emit progressRangeChanged(0, int(QFileInfo(filename).size()));
+      QStringList tokens;
+      while (!inFile.atEnd()) {
+        const QString &line = QString::fromUtf8(inFile.readLine());
+        int pos = 0;
+        while ((pos = reTokens.indexIn(line, pos)) != -1) {
+          if (reTokens.captureCount() > 0) {
+            tokens << reTokens.cap(1);
+          }
+          if (reTokens.captureCount() > 1 && !reTokens.cap(2).isEmpty()) {
+            tokens << reTokens.cap(2);
+          }
+          pos += reTokens.matchedLength();
         }
-        if (reTokens.captureCount() > 1 && !reTokens.cap(2).isEmpty()) {
-          tokens << reTokens.cap(2);
-        }
-        pos += reTokens.matchedLength();
       }
+      if (!tokens.isEmpty()) {
+        add(tokens);
+      }
+      inFile.close();
     }
-    if (!tokens.isEmpty()) {
-      add(tokens);
-    }
-    inFile.close();
   }
 }
 
@@ -99,6 +105,7 @@ void MarkovChain::readFromJsonFile(const QString &filename)
 void MarkovChain::add(const QStringList &tokenList)
 {
   MarkovNode *prev = Q_NULLPTR;
+  int bytesProcessed = 0;
   foreach (QString token, tokenList) {
     MarkovNodeList::iterator idx;
     bool contained = find(token, idx);
@@ -111,6 +118,8 @@ void MarkovChain::add(const QStringList &tokenList)
       prev->addSuccessor(curr);
     }
     prev = curr;
+    bytesProcessed += token.length();
+    emit progressValueChanged(int(bytesProcessed));
   }
 }
 

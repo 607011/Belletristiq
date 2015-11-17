@@ -1,7 +1,7 @@
 # Copyright (c) 2015 Oliver Lau <oliver@ersatzworld.net>
 # All rights reserved.
 
-QT += core widgets
+QT += core widgets concurrent
 
 TARGET = Belletristiq
 CONFIG += console c++11
