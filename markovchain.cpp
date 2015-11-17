@@ -17,6 +17,7 @@
 
 MarkovChain::MarkovChain(void)
   : mCurrentNodeId(0)
+  , mCancelled(false)
 {
   /* ... */
 }
@@ -24,8 +25,10 @@ MarkovChain::MarkovChain(void)
 
 void MarkovChain::postProcess(void)
 {
-  foreach (MarkovNode *node, mNodeList) {
-    node->calcProbabilities();
+  if (!mCancelled) {
+    foreach (MarkovNode *node, mNodeList) {
+      node->calcProbabilities();
+    }
   }
 }
 
@@ -34,6 +37,18 @@ void MarkovChain::clear(void)
 {
   mCurrentNodeId = 0;
   mNodeList.clear();
+}
+
+
+bool MarkovChain::isCancelled(void) const
+{
+  return mCancelled;
+}
+
+
+void MarkovChain::cancel(void)
+{
+  mCancelled = true;
 }
 
 
@@ -52,6 +67,7 @@ MarkovNode *MarkovChain::at(int idx)
 void MarkovChain::readFromTextFile(const QString &filename)
 {
   static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
+  mCancelled = false;
   QFileInfo fi(filename);
   if (fi.isReadable() && fi.isFile()) {
     QFile inFile(filename);
@@ -82,6 +98,7 @@ void MarkovChain::readFromTextFile(const QString &filename)
 
 void MarkovChain::readFromJsonFile(const QString &filename)
 {
+  mCancelled = false;
   QFile inFile(filename);
   if (inFile.open(QIODevice::ReadOnly)) {
     QByteArray jsonData = inFile.readAll();
@@ -120,6 +137,9 @@ void MarkovChain::add(const QStringList &tokenList)
     prev = curr;
     bytesProcessed += token.length();
     emit progressValueChanged(int(bytesProcessed));
+    if (mCancelled) {
+      break;
+    }
   }
 }
 

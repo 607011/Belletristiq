@@ -26,6 +26,8 @@ public:
   const MarkovNodeList &nodes(void) const;
   void postProcess(void);
   void clear(void);
+  bool isCancelled(void) const;
+  void cancel(void);
 
   int count(void) const;
   MarkovNode *at(int);
@@ -43,6 +45,7 @@ private:
   bool find(const QString &token, MarkovNodeList::iterator &i);
   int mCurrentNodeId;
   MarkovNodeList mNodeList;
+  volatile bool mCancelled;
 };
 
 

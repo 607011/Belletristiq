@@ -9,6 +9,7 @@
 #include <functional>
 
 #include <QtConcurrent>
+#include <QFuture>
 #include <QSettings>
 #include <QString>
 #include <QDateTime>
@@ -41,6 +42,7 @@ public:
   QString lastSaveMarkovDirectory;
   QString lastLoadMarkovDirectory;
   QString lastLoadTextDirectory;
+  QFuture<void> loadTextFuture;
 };
 
 
@@ -75,6 +77,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
+  Q_D(MainWindow);
+  if (d->loadTextFuture.isRunning()) {
+    d->markovChain->cancel();
+    d->loadTextFuture.waitForFinished();
+  }
   saveSettings();
   e->accept();
 }
@@ -155,10 +162,10 @@ void MainWindow::loadTextFilesThread(const QStringList &textFileNames)
 {
   Q_D(MainWindow);
   foreach (QString textFilename, textFileNames) {
-    qDebug() << "Reading" << textFilename << "...";
-    d->markovChain->readFromTextFile(textFilename);
+    if (!d->markovChain->isCancelled()) {
+      d->markovChain->readFromTextFile(textFilename);
+    }
   }
-  qDebug() << "Postprocessing ...";
   d->markovChain->postProcess();
   emit textFilesLoadFinished();
 }
@@ -172,7 +179,7 @@ void MainWindow::onLoadTextFiles(void)
     setCursor(Qt::WaitCursor);
     d->lastLoadTextDirectory = QFileInfo(textFilenames.first()).absolutePath();
     ui->progressBar->show();
-    QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);
+    d->loadTextFuture = QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);
   }
 }
 
