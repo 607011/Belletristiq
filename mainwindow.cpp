@@ -175,6 +175,7 @@ void MainWindow::onTextFilesLoaded(void)
   ui->progressBar->hide();
   setCursor(Qt::ArrowCursor);
   ui->generatePushButton->setEnabled(true);
+  ui->plainTextEdit->setEnabled(true);
   onGenerateText();
 }
 
@@ -209,6 +210,8 @@ void MainWindow::onLoadTextFiles(void)
         tr("Text files (*.txt)"));
   if (!textFilenames.isEmpty()) {
     setCursor(Qt::WaitCursor);
+    ui->generatePushButton->setEnabled(false);
+    ui->plainTextEdit->setEnabled(false);
     d->lastLoadTextDirectory = QFileInfo(textFilenames.first()).absolutePath();
     ui->progressBar->show();
     d->loadTextFuture = QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);

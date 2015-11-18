@@ -30,6 +30,7 @@ public:
 signals:
   void textFilesLoadFinished(void);
   void loadingTextFile(QString);
+  void postProcessingTextFiles(void);
 
 protected:
   void closeEvent(QCloseEvent *);
