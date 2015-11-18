@@ -62,10 +62,7 @@ void MarkovEdge::increaseCount(void)
 }
 
 
-QVariantMap MarkovEdge::toVariantMap(void) const
+QString MarkovEdge::toString(void) const
 {
-  QVariantMap map;
-  map["count"] = mCount;
-  map["token"] = mNode->token();
-  return map;
+  return QString("%1 %2").arg(mCount).arg(mNode->token());
 }

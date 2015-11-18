@@ -5,14 +5,11 @@
  */
 
 #include "markovchain.h"
+#include "markovedge.h"
+
 #include <QRegExp>
 #include <QFile>
 #include <QFileInfo>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonValue>
-#include <QJsonObject>
-#include <QtAlgorithms>
 
 
 const QByteArray MarkovChain::FileHeader("MRKV", 4);
@@ -68,7 +65,7 @@ MarkovNode *MarkovChain::at(int idx)
 
 bool MarkovChain::readFromTextFile(const QString &filename)
 {
-  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\(\\)»«\"'_])?", Qt::CaseSensitive, QRegExp::RegExp);
+  static const QRegExp reTokens("(\\b[^\\sˇ]+\\b)([\\.,;!:\\?\\(\\)»«\"'_])?", Qt::CaseSensitive, QRegExp::RegExp);
   mCancelled = false;
   QFileInfo fi(filename);
   if (fi.isReadable() && fi.isFile()) {
@@ -103,9 +100,9 @@ bool MarkovChain::readFromTextFile(const QString &filename)
 }
 
 
-bool MarkovChain::readFromJsonFile(const QString &filename)
+bool MarkovChain::readFromMarkovFile(const QString &filename)
 {
-  qDebug() << "MarkovChain::readFromJsonFile(" << filename << ")";
+  qDebug() << "MarkovChain::readFromMarkovFile(" << filename << ")";
   bool ok = false;
   mCancelled = false;
   QFile inFile(filename);
@@ -113,29 +110,40 @@ bool MarkovChain::readFromJsonFile(const QString &filename)
     QByteArray header(4, '\0');
     inFile.read(header.data(), 4);
     bool compressed = (header == FileHeader);
-    qDebug() << "compressed:" << compressed;
     if (!compressed) {
       inFile.seek(0);
     }
-    QByteArray jsonData = compressed ? qUncompress(inFile.readAll()) : inFile.readAll();
-    qDebug() << jsonData.mid(0, 500);
-    QJsonParseError jsonError;
-    QJsonDocument json = QJsonDocument::fromJson(jsonData, &jsonError);
-    if (jsonError.error == QJsonParseError::NoError) {
-      QVariantMap nodes = json.toVariant().toMap(); // TODO ...
-      foreach (QString token, nodes.keys()) {
-        MarkovNode *newNode = MarkovNode::fromVariantMap(nodes[token].toMap());
+    QString data = compressed ? qUncompress(inFile.readAll()) : inFile.readAll();
+    inFile.close();
+    QStringList lines = data.split('\n');
+    // 1st pass: add nodes without successors
+    foreach (QString line, lines) {
+      QStringList m = line.split(' ');
+      MarkovNode *newNode = Q_NULLPTR;
+      if (!m.isEmpty()) {
+        newNode = new MarkovNode(m.first());
         mNodeMap.insert(newNode->token(), newNode);
       }
-      ok = true;
     }
-    else {
-      // TODO: ...
+    // 2nd pass: add successors to nodes
+    foreach (QString line, lines) {
+      QStringList strEdge = line.split(' ', QString::SkipEmptyParts);
+      if (!strEdge.isEmpty()) {
+        const QString &token = strEdge.first();
+        Q_ASSERT(mNodeMap.keys().contains(token));
+        MarkovNode *node = mNodeMap[token];
+        for (int i = 1; i < strEdge.size(); i += 2) {
+          const int count = strEdge.at(i).toInt(&ok);
+          if (ok) {
+            const QString &token = strEdge.at(i + 1);
+            MarkovNode *refNode = mNodeMap[token];
+            MarkovEdge *edge = new MarkovEdge(refNode, count);
+            node->addSuccessor(edge);
+          }
+        }
+      }
     }
-    inFile.close();
-    if (ok) {
-      postProcess();
-    }
+    postProcess();
   }
   return ok;
 }
@@ -145,8 +153,7 @@ void MarkovChain::save(const QString &filename)
 {
   QFile outFile(filename);
   if (outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-    QJsonDocument json = QJsonDocument::fromVariant(toVariantMap());
-    QByteArray data = json.toJson(QJsonDocument::Indented);
+    QByteArray data = toString().toUtf8();
     if (filename.endsWith('z')) {
       outFile.write(FileHeader);
       data = qCompress(data, 9);
@@ -179,13 +186,13 @@ void MarkovChain::add(const QStringList &tokenList)
 }
 
 
-QVariantMap MarkovChain::toVariantMap(void)
+QString MarkovChain::toString(void) const
 {
-  QVariantMap map;
+  QString result;
   foreach (MarkovNode *node, mNodeMap) {
-    map.unite(node->toVariantMap());
+    result.append(node->toString()).append('\n');
   }
-  return map;
+  return result;
 }
 
 

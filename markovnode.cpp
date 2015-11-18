@@ -8,10 +8,9 @@
 #include "markovnode.h"
 #include "markovedge.h"
 
-#include <QtGlobal>
 #include <QDebug>
-#include <QJsonArray>
-#include <QJsonObject>
+#include <QtGlobal>
+#include <algorithm>
 
 
 MarkovNode::MarkovNode(const QString &token)
@@ -21,10 +20,19 @@ MarkovNode::MarkovNode(const QString &token)
 }
 
 
+bool edgeLessThan(MarkovEdge *a, MarkovEdge *b) {
+  return a->node()->token() < b->node()->token();
+}
+
+
 void MarkovNode::addSuccessor(MarkovNode *node)
 {
+  // NOTES:
+  // - Both algorithms have almost identical runtime behavior independent of the number of Markov nodes and edges.
+  // - The insertion algorithm is virtually superior to the linear one because it produces a sorted list of successors.
+#define INSERTION 1
+#if LINEAR
   MarkovEdgeList::iterator i;
-  // TODO: check how this O(n) search can be refined to an O(log n) search by using a binary search algorithm
   for (i = mSuccessors.begin(); i != mSuccessors.end(); ++i) {
     if ((*i)->node() == node) {
       (*i)->increaseCount();
@@ -34,6 +42,26 @@ void MarkovNode::addSuccessor(MarkovNode *node)
   if (i == mSuccessors.end()) {
     mSuccessors.append(new MarkovEdge(node));
   }
+#elif INSERTION
+  MarkovEdge soughtEdge(node);
+  MarkovEdgeList::iterator i = std::lower_bound(mSuccessors.begin(), mSuccessors.end(), &soughtEdge, edgeLessThan);
+  if (i == mSuccessors.end()) {
+    mSuccessors.append(new MarkovEdge(node));
+  }
+  else if ((*i)->node() == node) {
+     (*i)->increaseCount();
+  }
+  else {
+    mSuccessors.insert(i, new MarkovEdge(node));
+  }
+#endif
+}
+
+
+void MarkovNode::addSuccessor(MarkovEdge *edge)
+{
+  MarkovEdgeList::iterator i = std::lower_bound(mSuccessors.begin(), mSuccessors.end(), edge, edgeLessThan);
+  mSuccessors.insert(i, edge);
 }
 
 
@@ -81,25 +109,16 @@ MarkovNode *MarkovNode::selectSuccessor(const qreal p)
 }
 
 
-QVariantMap MarkovNode::toVariantMap(void) const
+QString MarkovNode::toString(void) const
 {
-  QVariantMap map;
-  QVariantList successors;
-  foreach (MarkovEdge *successor, mSuccessors) {
-    successors.append(successor->toVariantMap());
+  QString result = mToken + ' ';
+  for (MarkovEdgeList::const_iterator i = mSuccessors.constBegin(); i != mSuccessors.constEnd(); ++i) {
+    const MarkovEdge *successor = *i;
+    result.append(successor->toString());
+    if (i < (mSuccessors.constEnd() - 1))
+      result.append(' ');
   }
-  map[mToken] = successors;
-  return map;
-}
-
-
-MarkovNode *MarkovNode::fromVariantMap(const QVariantMap &map)
-{
-  const QString &token = map.keys().first();
-  MarkovNode *node = new MarkovNode(token);
-  QVariantList successors = map[token].toList();
-  // TODO: evaluate successors ...
-  return node;
+  return result;
 }
 
 

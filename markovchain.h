@@ -8,8 +8,10 @@
 #define __MARKOVCHAIN_H_
 
 #include <QDebug>
+#include <QObject>
 #include <QByteArray>
-#include <QVariantMap>
+#include <QString>
+#include <QMap>
 
 #include "markovnode.h"
 
@@ -33,10 +35,10 @@ public:
   MarkovNode *at(int);
 
   bool readFromTextFile(const QString &filename);
-  bool readFromJsonFile(const QString &filename);
+  bool readFromMarkovFile(const QString &filename);
   void save(const QString &filename);
 
-  QVariantMap toVariantMap(void);
+  QString toString(void) const;
 
   static const QByteArray FileHeader;
 

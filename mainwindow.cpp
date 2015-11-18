@@ -291,7 +291,7 @@ void MainWindow::onSaveMarkovChain(void)
         this,
         tr("Save Markov chain to ..."),
         d->lastSaveMarkovDirectory,
-        tr("Markov files (*.markov *.markovz *.json .jsonz)"));
+        tr("Markov files (*.markov *.markovz)"));
   if (!markovFilename.isEmpty()) {
     d->lastSaveMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->save(markovFilename);
@@ -306,10 +306,10 @@ void MainWindow::onLoadMarkovChain(void)
         this,
         tr("Load Markov chain from ..."),
         d->lastLoadMarkovDirectory,
-        tr("Markov files (*.markov *.markovz *.json .jsonz)"));
+        tr("Markov files (*.markov *.markovz)"));
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
-    d->markovChain->readFromJsonFile(markovFilename);
+    d->markovChain->readFromMarkovFile(markovFilename);
     onGenerateText();
   }
 }

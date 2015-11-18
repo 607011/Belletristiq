@@ -9,15 +9,14 @@
 #define __MARKOVEDGE_H_
 
 #include <QtGlobal>
-#include <QVariantMap>
-
+#include <QString>
 
 class MarkovNode;
 
 class MarkovEdge {
 public:
-  explicit MarkovEdge(MarkovNode *mNode);
-  MarkovEdge(MarkovNode *node, int count);
+  explicit MarkovEdge(MarkovNode *);
+  MarkovEdge(MarkovNode *, int count);
 
   MarkovNode *node(void);
   int count(void) const;
@@ -26,7 +25,7 @@ public:
   void setProbability(qreal p);
   void increaseCount(void);
 
-  QVariantMap toVariantMap(void) const;
+  QString toString(void) const;
 
 private:
   MarkovNode *mNode;

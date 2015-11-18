@@ -10,8 +10,6 @@
 
 #include <QList>
 #include <QString>
-#include <QVariantMap>
-#include <QVariantList>
 
 
 class MarkovChain;
@@ -22,9 +20,10 @@ class MarkovNode {
 public:
   typedef QList<MarkovEdge*> MarkovEdgeList;
 
-  explicit MarkovNode(const QString &mToken);
+  explicit MarkovNode(const QString &token);
 
   void addSuccessor(MarkovNode *node);
+  void addSuccessor(MarkovEdge *edge);
   void calcProbabilities(void);
 
   const MarkovEdgeList &successors(void) const;
@@ -32,9 +31,7 @@ public:
 
   MarkovNode *selectSuccessor(const qreal p);
 
-  QVariantMap toVariantMap(void) const;
-
-  static MarkovNode *fromVariantMap(const QVariantMap &map);
+  QString toString(void) const;
 
 private:
   QString mToken;
