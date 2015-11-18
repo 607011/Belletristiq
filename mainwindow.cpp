@@ -17,6 +17,7 @@
 #include <QJsonDocument>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QElapsedTimer>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -51,6 +52,7 @@ public:
   QString lastLoadTextDirectory;
   QFuture<void> loadTextFuture;
   int textFilesLoaded;
+  QElapsedTimer stopwatch;
 };
 
 
@@ -217,7 +219,8 @@ void MainWindow::onTextFilesLoadCanceled(void)
 
 void MainWindow::onTextFilesLoaded(void)
 {
-  ui->statusbar->showMessage(tr("Files loaded."), 3000);
+  Q_D(MainWindow);
+  ui->statusbar->showMessage(tr("Files loaded in %1 seconds.").arg(d->stopwatch.elapsed() / 1000), 3000);
   ui->tokensProgressBar->hide();
   ui->filesProgressBar->hide();
   setCursor(Qt::ArrowCursor);
@@ -254,6 +257,7 @@ void MainWindow::loadTextFiles(QStringList textFilenames)
 {
   Q_D(MainWindow);
   if (textFilenames.count() > 0) {
+    d->stopwatch.start();
     d->textFilesLoaded = 0;
     ui->filesProgressBar->setRange(0, textFilenames.count());
     ui->filesProgressBar->setValue(0);
