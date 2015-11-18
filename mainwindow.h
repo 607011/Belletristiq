@@ -39,10 +39,10 @@ private slots:
   void onSaveMarkovChain(void);
   void onLoadMarkovChain(void);
   void onResetMarkovChain(void);
-  void generateText_Simple(void);
   void onTextFilesLoadCanceled(void);
   void onTextFilesLoaded(void);
   void onTextFilesLoading(const QString &);
+  void onGenerateText(void);
 
 private:
   Ui::MainWindow *ui;
@@ -55,6 +55,7 @@ private:
   void saveSettings(void);
   void restoreSettings(void);
   void loadTextFilesThread(const QStringList &textFileNames);
+  QString generateText_Simple(void);
 
 };
 

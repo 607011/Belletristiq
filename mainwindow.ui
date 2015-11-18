@@ -79,6 +79,15 @@
        </widget>
       </item>
       <item>
+       <widget class="QComboBox" name="algorithmComboBox">
+        <item>
+         <property name="text">
+          <string>Simple</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -101,7 +110,7 @@
      <x>0</x>
      <y>0</y>
      <width>640</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">

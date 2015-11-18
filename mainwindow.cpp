@@ -70,7 +70,7 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionSaveMarkovChain, SIGNAL(triggered(bool)), SLOT(onSaveMarkovChain()));
   QObject::connect(ui->actionLoadMarkovChain, SIGNAL(triggered(bool)), SLOT(onLoadMarkovChain()));
   QObject::connect(ui->actionResetMarkovChain, SIGNAL(triggered(bool)), SLOT(onResetMarkovChain()));
-  QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(generateText_Simple()));
+  QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(onGenerateText()));
 
   restoreSettings();
 }
@@ -119,7 +119,7 @@ void MainWindow::restoreSettings(void)
 }
 
 
-void MainWindow::generateText_Simple(void)
+QString MainWindow::generateText_Simple(void)
 {
   Q_D(MainWindow);
   std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
@@ -147,7 +147,17 @@ void MainWindow::generateText_Simple(void)
     lastToken = token;
     node = node->selectSuccessor(d->pDist(d->rng));
   }
-  ui->plainTextEdit->setPlainText(result);
+  return result;
+}
+
+
+void MainWindow::onGenerateText(void)
+{
+  QString generatedText;
+  if (ui->algorithmComboBox->currentText() == tr("Simple")) {
+    generatedText = generateText_Simple();
+  }
+  ui->plainTextEdit->setPlainText(generatedText);
 }
 
 
@@ -165,13 +175,13 @@ void MainWindow::onTextFilesLoaded(void)
   ui->progressBar->hide();
   setCursor(Qt::ArrowCursor);
   ui->generatePushButton->setEnabled(true);
-  generateText_Simple();
+  onGenerateText();
 }
 
 
 void MainWindow::onTextFilesLoading(const QString &filename)
 {
-  ui->statusbar->showMessage(tr("Loading %1 ...").arg(filename), 3000);
+  ui->statusbar->showMessage(tr("Loading %1 ...").arg(filename));
 }
 
 
@@ -232,7 +242,7 @@ void MainWindow::onLoadMarkovChain(void)
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->readFromJsonFile(markovFilename);
-    generateText_Simple();
+    onGenerateText();
   }
 }
 
