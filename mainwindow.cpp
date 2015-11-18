@@ -109,25 +109,40 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *e)
 {
   if (e->mimeData()->hasUrls()) {
     e->acceptProposedAction();
+    if (e->keyboardModifiers() & Qt::ShiftModifier) {
+      ui->statusbar->showMessage(tr("Markov chain will be cleared before import."));
+    }
+    else {
+      ui->statusbar->showMessage(tr("Markov chain will not be cleared before import."));
+    }
   }
 }
 
 
-void MainWindow::dragMoveEvent(QDragMoveEvent *)
+void MainWindow::dragMoveEvent(QDragMoveEvent *e)
 {
-  // do nothing
+  if (e->keyboardModifiers() & Qt::ShiftModifier) {
+    ui->statusbar->showMessage(tr("Markov chain will be cleared before import."));
+  }
+  else {
+    ui->statusbar->showMessage(tr("Markov chain will not be cleared before import."));
+  }
 }
 
 
 void MainWindow::dragLeaveEvent(QDragLeaveEvent *)
 {
-  // do nothing
+  ui->statusbar->showMessage(QString());
 }
 
 
 void MainWindow::dropEvent(QDropEvent *e)
 {
+  Q_D(MainWindow);
   if (e->mimeData()->hasUrls()) {
+    if (e->keyboardModifiers() & Qt::ShiftModifier) {
+      d->markovChain->clear();
+    }
     QStringList textFileNames;
     foreach (QUrl url, e->mimeData()->urls()) {
       const QString &fileName = url.toLocalFile();
@@ -220,7 +235,12 @@ void MainWindow::onTextFilesLoadCanceled(void)
 void MainWindow::onTextFilesLoaded(void)
 {
   Q_D(MainWindow);
-  ui->statusbar->showMessage(tr("Files loaded in %1 seconds.").arg(d->stopwatch.elapsed() / 1000), 3000);
+  const qint64 elapsed = d->stopwatch.elapsed() / 1000;
+  ui->statusbar->showMessage(tr("File(s) loaded in %1 seconds.")
+                             .arg(elapsed == 0
+                                  ? tr("<1")
+                                  : QString::number(elapsed))
+                             , 3000);
   ui->tokensProgressBar->hide();
   ui->filesProgressBar->hide();
   setCursor(Qt::ArrowCursor);
@@ -309,8 +329,11 @@ void MainWindow::onLoadMarkovChain(void)
         tr("Markov files (*.markov *.markovz)"));
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
-    d->markovChain->readFromMarkovFile(markovFilename);
-    onGenerateText();
+    d->stopwatch.start();
+    bool ok = d->markovChain->readFromMarkovFile(markovFilename);
+    if (ok) {
+      onTextFilesLoaded();
+    }
   }
 }
 
