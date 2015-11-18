@@ -16,10 +16,11 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QMessageBox>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include "globals.h"
 #include "markovnode.h"
 #include "markovnode.h"
 #include "markovchain.h"
@@ -71,6 +72,8 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionLoadMarkovChain, SIGNAL(triggered(bool)), SLOT(onLoadMarkovChain()));
   QObject::connect(ui->actionResetMarkovChain, SIGNAL(triggered(bool)), SLOT(onResetMarkovChain()));
   QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(onGenerateText()));
+  QObject::connect(ui->actionAbout, SIGNAL(triggered(bool)), SLOT(about()));
+  QObject::connect(ui->actionAboutQt, SIGNAL(triggered(bool)), SLOT(aboutQt()));
 
   restoreSettings();
 }
@@ -257,4 +260,33 @@ void MainWindow::onResetMarkovChain(void)
   d->markovChain->clear();
   ui->plainTextEdit->clear();
   ui->statusbar->showMessage(tr("Markov chain reset."), 3000);
+}
+
+
+void MainWindow::about(void)
+{
+  QMessageBox::about(
+        this, tr("About %1 %2").arg(AppName).arg(AppVersion),
+        tr("<p><b>%1</b> is a Markov-chain based text generator. "
+           "See <a href=\"%2\" title=\"%1 project homepage\">%2</a> for more info.</p>"
+           "<p>This program is free software: you can redistribute it and/or modify "
+           "it under the terms of the GNU General Public License as published by "
+           "the Free Software Foundation, either version 3 of the License, or "
+           "(at your option) any later version.</p>"
+           "<p>This program is distributed in the hope that it will be useful, "
+           "but WITHOUT ANY WARRANTY; without even the implied warranty of "
+           "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the "
+           "GNU General Public License for more details.</p>"
+           "You should have received a copy of the GNU General Public License "
+           "along with this program. "
+           "If not, see <a href=\"http://www.gnu.org/licenses/gpl-3.0\">http://www.gnu.org/licenses</a>.</p>"
+           "<p>Copyright &copy; 2015 %3 &lt;%4&gt;.</p>"
+           )
+        .arg(AppName).arg(AppURL).arg(AppAuthor).arg(AppAuthorMail));
+}
+
+
+void MainWindow::aboutQt(void)
+{
+  QMessageBox::aboutQt(this);
 }

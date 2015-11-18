@@ -44,6 +44,8 @@ private slots:
   void onTextFilesLoaded(void);
   void onTextFilesLoading(const QString &);
   void onGenerateText(void);
+  void about(void);
+  void aboutQt(void);
 
 private:
   Ui::MainWindow *ui;
