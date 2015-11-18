@@ -77,7 +77,7 @@ bool MarkovChain::readFromTextFile(const QString &filename)
       int totalSize = 0;
       QStringList tokens;
       while (!inFile.atEnd()) {
-        const QString &line = QString::fromUtf8(inFile.readLine());
+        const QString line = QString::fromUtf8(inFile.readLine());
         int pos = 0;
         while ((pos = reTokens.indexIn(line, pos)) != -1) {
           const QString &t1 = reTokens.cap(1);
@@ -141,13 +141,13 @@ bool MarkovChain::readFromJsonFile(const QString &filename)
 }
 
 
-void MarkovChain::save(const QString &filename, bool compressed)
+void MarkovChain::save(const QString &filename)
 {
   QFile outFile(filename);
   if (outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
     QJsonDocument json = QJsonDocument::fromVariant(toVariantMap());
     QByteArray data = json.toJson(QJsonDocument::Indented);
-    if (compressed) {
+    if (filename.endsWith('z')) {
       outFile.write(FileHeader);
       data = qCompress(data, 9);
     }

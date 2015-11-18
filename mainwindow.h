@@ -12,6 +12,10 @@
 #include <QScopedPointer>
 #include <QCloseEvent>
 #include <QString>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDragLeaveEvent>
+#include <QDropEvent>
 
 namespace Ui {
 class MainWindow;
@@ -33,7 +37,11 @@ signals:
   void postProcessingTextFiles(void);
 
 protected:
-  void closeEvent(QCloseEvent *);
+  void closeEvent(QCloseEvent *) Q_DECL_OVERRIDE;
+  void dragEnterEvent(QDragEnterEvent *) Q_DECL_OVERRIDE;
+  void dragMoveEvent(QDragMoveEvent *) Q_DECL_OVERRIDE;
+  void dragLeaveEvent(QDragLeaveEvent *) Q_DECL_OVERRIDE;
+  void dropEvent(QDropEvent *) Q_DECL_OVERRIDE;
 
 private slots:
   void onLoadTextFiles(void);
@@ -58,6 +66,7 @@ private:
   void saveSettings(void);
   void restoreSettings(void);
   void loadTextFilesThread(const QStringList &textFileNames);
+  void loadTextFiles(QStringList textFilenames);
   QString generateText_Simple(void);
 
 };

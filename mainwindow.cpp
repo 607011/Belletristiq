@@ -6,7 +6,6 @@
 
 
 #include <random>
-#include <functional>
 
 #include <QtConcurrent>
 #include <QFuture>
@@ -17,6 +16,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QMessageBox>
+#include <QMimeData>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -31,6 +31,7 @@ public:
   MainWindowPrivate(void)
     : markovChain(new MarkovChain)
     , pDist(0.0, 1.0)
+    , textFilesLoaded(0)
   {
     rng.seed(QDateTime::currentDateTimeUtc().toTime_t());
   }
@@ -49,6 +50,7 @@ public:
   QString lastLoadMarkovDirectory;
   QString lastLoadTextDirectory;
   QFuture<void> loadTextFuture;
+  int textFilesLoaded;
 };
 
 
@@ -59,12 +61,13 @@ MainWindow::MainWindow(QWidget *parent)
 {
   ui->setupUi(this);
 
-  ui->progressBar->hide();
+  ui->tokensProgressBar->hide();
+  ui->filesProgressBar->hide();
 
   QObject::connect(this, SIGNAL(loadingTextFile(QString)), this, SLOT(onTextFilesLoading(QString)));
   QObject::connect(this, SIGNAL(textFilesLoadFinished()), this, SLOT(onTextFilesLoaded()));
-  QObject::connect(d_ptr->markovChain, SIGNAL(progressValueChanged(int)), ui->progressBar, SLOT(setValue(int)));
-  QObject::connect(d_ptr->markovChain, SIGNAL(progressRangeChanged(int, int)), ui->progressBar, SLOT(setRange(int,int)));
+  QObject::connect(d_ptr->markovChain, SIGNAL(progressValueChanged(int)), ui->tokensProgressBar, SLOT(setValue(int)));
+  QObject::connect(d_ptr->markovChain, SIGNAL(progressRangeChanged(int, int)), ui->tokensProgressBar, SLOT(setRange(int,int)));
 
   QObject::connect(ui->actionExit, SIGNAL(triggered(bool)), SLOT(close()));
   QObject::connect(ui->actionLoadTextFiles, SIGNAL(triggered(bool)), SLOT(onLoadTextFiles()));
@@ -76,6 +79,9 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionAboutQt, SIGNAL(triggered(bool)), SLOT(aboutQt()));
 
   restoreSettings();
+
+  setUnifiedTitleAndToolBarOnMac(true);
+  setAcceptDrops(true);
 }
 
 
@@ -94,6 +100,42 @@ void MainWindow::closeEvent(QCloseEvent *e)
   }
   saveSettings();
   e->accept();
+}
+
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *e)
+{
+  if (e->mimeData()->hasUrls()) {
+    e->acceptProposedAction();
+  }
+}
+
+
+void MainWindow::dragMoveEvent(QDragMoveEvent *)
+{
+  // do nothing
+}
+
+
+void MainWindow::dragLeaveEvent(QDragLeaveEvent *)
+{
+  // do nothing
+}
+
+
+void MainWindow::dropEvent(QDropEvent *e)
+{
+  if (e->mimeData()->hasUrls()) {
+    QStringList textFileNames;
+    foreach (QUrl url, e->mimeData()->urls()) {
+      const QString &fileName = url.toLocalFile();
+      if (fileName.endsWith(".txt")) {
+        textFileNames << fileName;
+      }
+    }
+    loadTextFiles(textFileNames);
+    e->acceptProposedAction();
+  }
 }
 
 
@@ -167,7 +209,8 @@ void MainWindow::onGenerateText(void)
 void MainWindow::onTextFilesLoadCanceled(void)
 {
   ui->statusbar->showMessage(tr("Cancelled."), 3000);
-  ui->progressBar->hide();
+  ui->tokensProgressBar->hide();
+  ui->filesProgressBar->hide();
   setCursor(Qt::ArrowCursor);
 }
 
@@ -175,7 +218,8 @@ void MainWindow::onTextFilesLoadCanceled(void)
 void MainWindow::onTextFilesLoaded(void)
 {
   ui->statusbar->showMessage(tr("Files loaded."), 3000);
-  ui->progressBar->hide();
+  ui->tokensProgressBar->hide();
+  ui->filesProgressBar->hide();
   setCursor(Qt::ArrowCursor);
   ui->generatePushButton->setEnabled(true);
   ui->plainTextEdit->setEnabled(true);
@@ -185,6 +229,9 @@ void MainWindow::onTextFilesLoaded(void)
 
 void MainWindow::onTextFilesLoading(const QString &filename)
 {
+  Q_D(MainWindow);
+  ++d->textFilesLoaded;
+  ui->filesProgressBar->setValue(d->textFilesLoaded);
   ui->statusbar->showMessage(tr("Loading %1 ...").arg(filename));
 }
 
@@ -203,6 +250,24 @@ void MainWindow::loadTextFilesThread(const QStringList &textFileNames)
 }
 
 
+void MainWindow::loadTextFiles(QStringList textFilenames)
+{
+  Q_D(MainWindow);
+  if (textFilenames.count() > 0) {
+    d->textFilesLoaded = 0;
+    ui->filesProgressBar->setRange(0, textFilenames.count());
+    ui->filesProgressBar->setValue(0);
+    setCursor(Qt::WaitCursor);
+    ui->generatePushButton->setEnabled(false);
+    ui->plainTextEdit->setEnabled(false);
+    d->lastLoadTextDirectory = QFileInfo(textFilenames.first()).absolutePath();
+    ui->tokensProgressBar->show();
+    ui->filesProgressBar->show();
+    d->loadTextFuture = QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);
+  }
+}
+
+
 void MainWindow::onLoadTextFiles(void)
 {
   Q_D(MainWindow);
@@ -211,14 +276,7 @@ void MainWindow::onLoadTextFiles(void)
         tr("Load text files ..."),
         d->lastLoadTextDirectory,
         tr("Text files (*.txt)"));
-  if (!textFilenames.isEmpty()) {
-    setCursor(Qt::WaitCursor);
-    ui->generatePushButton->setEnabled(false);
-    ui->plainTextEdit->setEnabled(false);
-    d->lastLoadTextDirectory = QFileInfo(textFilenames.first()).absolutePath();
-    ui->progressBar->show();
-    d->loadTextFuture = QtConcurrent::run(this, &MainWindow::loadTextFilesThread, textFilenames);
-  }
+  loadTextFiles(textFilenames);
 }
 
 
@@ -229,10 +287,10 @@ void MainWindow::onSaveMarkovChain(void)
         this,
         tr("Save Markov chain to ..."),
         d->lastSaveMarkovDirectory,
-        tr("Markov files (*.json *.dat *.markov)"));
+        tr("Markov files (*.markov *.markovz *.json .jsonz)"));
   if (!markovFilename.isEmpty()) {
     d->lastSaveMarkovDirectory = QFileInfo(markovFilename).absolutePath();
-    d->markovChain->save(markovFilename, false);
+    d->markovChain->save(markovFilename);
   }
 }
 
@@ -244,7 +302,7 @@ void MainWindow::onLoadMarkovChain(void)
         this,
         tr("Load Markov chain from ..."),
         d->lastLoadMarkovDirectory,
-        tr("Markov files (*.json *.dat *.markov)"));
+        tr("Markov files (*.markov *.markovz *.json .jsonz)"));
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->readFromJsonFile(markovFilename);

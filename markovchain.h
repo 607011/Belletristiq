@@ -34,7 +34,7 @@ public:
 
   bool readFromTextFile(const QString &filename);
   bool readFromJsonFile(const QString &filename);
-  void save(const QString &filename, bool compressed);
+  void save(const QString &filename);
 
   QVariantMap toVariantMap(void);
 

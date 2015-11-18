@@ -30,7 +30,7 @@ public:
   const MarkovEdgeList &successors(void) const;
   const QString &token(void) const;
 
-  MarkovNode *selectSuccessor(qreal p);
+  MarkovNode *selectSuccessor(const qreal p);
 
   QVariantMap toVariantMap(void) const;
 

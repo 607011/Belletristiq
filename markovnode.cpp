@@ -70,7 +70,7 @@ const QString &MarkovNode::token(void) const
 }
 
 
-MarkovNode *MarkovNode::selectSuccessor(qreal p)
+MarkovNode *MarkovNode::selectSuccessor(const qreal p)
 {
   foreach(MarkovEdge *edge, mSuccessors) {
     if (p > edge->p()) {
