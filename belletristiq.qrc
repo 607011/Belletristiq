@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>resources/washing-machine.ico</file>
+    </qresource>
+</RCC>

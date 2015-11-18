@@ -28,3 +28,7 @@ DISTFILES += \
 FORMS += \
     mainwindow.ui
 
+RESOURCES += \
+    belletristiq.qrc
+
+win32:RC_FILE = Belletristiq.rc
