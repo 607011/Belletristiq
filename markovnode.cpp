@@ -24,6 +24,7 @@ MarkovNode::MarkovNode(const QString &token)
 void MarkovNode::addSuccessor(MarkovNode *node)
 {
   MarkovEdgeList::iterator i;
+  // TODO: check how this O(n) search can be refined to an O(log n) search by using a binary search algorithm
   for (i = mSuccessors.begin(); i != mSuccessors.end(); ++i) {
     if ((*i)->node() == node) {
       (*i)->increaseCount();
@@ -60,12 +61,6 @@ void MarkovNode::calcProbabilities(void) {
 const MarkovNode::MarkovEdgeList &MarkovNode::successors(void) const
 {
   return mSuccessors;
-}
-
-
-void MarkovNode::setSuccessors(const MarkovEdgeList &successors)
-{
-  mSuccessors = successors;
 }
 
 

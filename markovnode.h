@@ -28,7 +28,6 @@ public:
   void calcProbabilities(void);
 
   const MarkovEdgeList &successors(void) const;
-  void setSuccessors(const MarkovEdgeList &successors);
   const QString &token(void) const;
 
   MarkovNode *selectSuccessor(qreal p);

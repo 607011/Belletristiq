@@ -162,6 +162,8 @@ void MarkovChain::add(const QStringList &tokenList)
   MarkovNode *prev = Q_NULLPTR;
   int bytesProcessed = 0;
   foreach (QString token, tokenList) {
+    if (mCancelled)
+      break;
     MarkovNode *curr = mNodeMap.value(token, Q_NULLPTR);
     if (curr == Q_NULLPTR) {
       curr = new MarkovNode(token);
@@ -173,9 +175,6 @@ void MarkovChain::add(const QStringList &tokenList)
     prev = curr;
     bytesProcessed += token.length();
     emit progressValueChanged(int(bytesProcessed));
-    if (mCancelled) {
-      break;
-    }
   }
 }
 
