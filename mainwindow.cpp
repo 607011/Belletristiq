@@ -107,7 +107,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *e)
 {
-  if (e->mimeData()->hasUrls()) {
+  if (e->mimeData()->hasUrls() || e->mimeData()->hasText()) {
     e->acceptProposedAction();
     if (e->keyboardModifiers() & Qt::ShiftModifier) {
       ui->statusbar->showMessage(tr("Markov chain will be cleared before import."));
@@ -139,10 +139,10 @@ void MainWindow::dragLeaveEvent(QDragLeaveEvent *)
 void MainWindow::dropEvent(QDropEvent *e)
 {
   Q_D(MainWindow);
+  if (e->keyboardModifiers() & Qt::ShiftModifier) {
+    d->markovChain->clear();
+  }
   if (e->mimeData()->hasUrls()) {
-    if (e->keyboardModifiers() & Qt::ShiftModifier) {
-      d->markovChain->clear();
-    }
     QStringList textFileNames;
     foreach (QUrl url, e->mimeData()->urls()) {
       const QString &fileName = url.toLocalFile();
@@ -152,6 +152,11 @@ void MainWindow::dropEvent(QDropEvent *e)
     }
     loadTextFiles(textFileNames);
     e->acceptProposedAction();
+  }
+  else if (e->mimeData()->hasText()) {
+    d->markovChain->addText(e->mimeData()->text());
+    d->markovChain->postProcess();
+    onTextFilesLoaded();
   }
 }
 
@@ -236,7 +241,7 @@ void MainWindow::onTextFilesLoaded(void)
 {
   Q_D(MainWindow);
   const qint64 elapsed = d->stopwatch.elapsed() / 1000;
-  ui->statusbar->showMessage(tr("File(s) loaded in %1 seconds.")
+  ui->statusbar->showMessage(tr("Loaded in %1 seconds.")
                              .arg(elapsed == 0
                                   ? tr("<1")
                                   : QString::number(elapsed))

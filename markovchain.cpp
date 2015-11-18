@@ -63,9 +63,36 @@ MarkovNode *MarkovChain::at(int idx)
 }
 
 
-bool MarkovChain::readFromTextFile(const QString &filename)
+void MarkovChain::parseText(const QString &line, QStringList &tokens, int &totalSize)
 {
   static const QRegExp reTokens("(\\b[^\\sˇ]+\\b)([\\.,;!:\\?\\(\\)»«\"'_])?", Qt::CaseSensitive, QRegExp::RegExp);
+  int pos = 0;
+  while ((pos = reTokens.indexIn(line, pos)) != -1) {
+    const QString &t1 = reTokens.cap(1);
+    if (reTokens.captureCount() > 0 && !t1.isEmpty()) {
+      tokens << t1;
+    }
+    const QString &t2 = reTokens.cap(2);
+    if (reTokens.captureCount() > 1 && !t2.isEmpty()) {
+      tokens << t2;
+    }
+    totalSize += t1.length() + t2.length();
+    pos += reTokens.matchedLength();
+  }
+}
+
+
+void MarkovChain::addText(const QString &text)
+{
+  QStringList tokens;
+  int totalSize = 0;
+  parseText(text, tokens, totalSize);
+  add(tokens);
+}
+
+
+bool MarkovChain::readFromTextFile(const QString &filename)
+{
   mCancelled = false;
   QFileInfo fi(filename);
   if (fi.isReadable() && fi.isFile()) {
@@ -74,26 +101,11 @@ bool MarkovChain::readFromTextFile(const QString &filename)
       int totalSize = 0;
       QStringList tokens;
       while (!inFile.atEnd()) {
-        const QString line = QString::fromUtf8(inFile.readLine());
-        int pos = 0;
-        while ((pos = reTokens.indexIn(line, pos)) != -1) {
-          const QString &t1 = reTokens.cap(1);
-          if (reTokens.captureCount() > 0 && !t1.isEmpty()) {
-            tokens << t1;
-          }
-          const QString &t2 = reTokens.cap(2);
-          if (reTokens.captureCount() > 1 && !t2.isEmpty()) {
-            tokens << t2;
-          }
-          totalSize += t1.length() + t2.length();
-          pos += reTokens.matchedLength();
-        }
-      }
-      emit progressRangeChanged(0, totalSize);
-      if (!tokens.isEmpty()) {
-        add(tokens);
+        parseText(QString::fromUtf8(inFile.readLine()), tokens, totalSize);
       }
       inFile.close();
+      emit progressRangeChanged(0, totalSize);
+      add(tokens);
     }
   }
   return false;
@@ -166,22 +178,24 @@ void MarkovChain::save(const QString &filename)
 
 void MarkovChain::add(const QStringList &tokenList)
 {
-  MarkovNode *prev = Q_NULLPTR;
-  int bytesProcessed = 0;
-  foreach (QString token, tokenList) {
-    if (mCancelled)
-      break;
-    MarkovNode *curr = mNodeMap.value(token, Q_NULLPTR);
-    if (curr == Q_NULLPTR) {
-      curr = new MarkovNode(token);
-      mNodeMap.insert(curr->token(), curr);
+  if (!tokenList.isEmpty()) {
+    MarkovNode *prev = Q_NULLPTR;
+    int bytesProcessed = 0;
+    foreach (QString token, tokenList) {
+      if (mCancelled)
+        break;
+      MarkovNode *curr = mNodeMap.value(token, Q_NULLPTR);
+      if (curr == Q_NULLPTR) {
+        curr = new MarkovNode(token);
+        mNodeMap.insert(curr->token(), curr);
+      }
+      if (prev != Q_NULLPTR) {
+        prev->addSuccessor(curr);
+      }
+      prev = curr;
+      bytesProcessed += token.length();
+      emit progressValueChanged(int(bytesProcessed));
     }
-    if (prev != Q_NULLPTR) {
-      prev->addSuccessor(curr);
-    }
-    prev = curr;
-    bytesProcessed += token.length();
-    emit progressValueChanged(int(bytesProcessed));
   }
 }
 

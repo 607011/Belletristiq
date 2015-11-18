@@ -42,6 +42,8 @@ public:
 
   static const QByteArray FileHeader;
 
+  void addText(const QString &text);
+
 signals:
   void progressRangeChanged(int, int);
   void progressValueChanged(int);
@@ -49,6 +51,9 @@ signals:
 private:
   MarkovNodeMap mNodeMap;
   volatile bool mCancelled;
+
+private:
+  void parseText(const QString &line, QStringList &tokens, int &totalSize);
 };
 
 
