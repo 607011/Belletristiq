@@ -60,6 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
 
   ui->progressBar->hide();
 
+  QObject::connect(this, SIGNAL(loadingTextFile(QString)), this, SLOT(onTextFilesLoading(QString)));
   QObject::connect(this, SIGNAL(textFilesLoadFinished()), this, SLOT(onTextFilesLoaded()));
   QObject::connect(d_ptr->markovChain, SIGNAL(progressValueChanged(int)), ui->progressBar, SLOT(setValue(int)));
   QObject::connect(d_ptr->markovChain, SIGNAL(progressRangeChanged(int, int)), ui->progressBar, SLOT(setRange(int,int)));
@@ -69,7 +70,7 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionSaveMarkovChain, SIGNAL(triggered(bool)), SLOT(onSaveMarkovChain()));
   QObject::connect(ui->actionLoadMarkovChain, SIGNAL(triggered(bool)), SLOT(onLoadMarkovChain()));
   QObject::connect(ui->actionResetMarkovChain, SIGNAL(triggered(bool)), SLOT(onResetMarkovChain()));
-  QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(generateText()));
+  QObject::connect(ui->generatePushButton, SIGNAL(clicked(bool)), SLOT(generateText_Simple()));
 
   restoreSettings();
 }
@@ -118,7 +119,7 @@ void MainWindow::restoreSettings(void)
 }
 
 
-void MainWindow::generateText(void)
+void MainWindow::generateText_Simple(void)
 {
   Q_D(MainWindow);
   std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
@@ -128,7 +129,7 @@ void MainWindow::generateText(void)
   int N = ui->wordCountSpinBox->value();
   while (N-- > 0) {
     if (node == Q_NULLPTR) {
-      node = d->markovChain->at(nDist(d->rng)); // XXX
+      node = d->markovChain->at(nDist(d->rng));
       int nTries = d->markovChain->count() / 2;
       do {
         node = d->markovChain->at(nDist(d->rng));
@@ -137,8 +138,9 @@ void MainWindow::generateText(void)
         result += " \\\n";
       }
     }
+    static const QStringList StopTokens = { ".", ",", ":", ";", "?", "!", ")", "«", "_" };
     const QString &token = node->token();
-    if (!lastToken.isEmpty() && token != "." && token != "," && token != ":" && token != ";" && token != "?" && token != "!" && token != ")") {
+    if (!lastToken.isEmpty() && !StopTokens.contains(token)) {
       result += " ";
     }
     result += token;
@@ -151,17 +153,25 @@ void MainWindow::generateText(void)
 
 void MainWindow::onTextFilesLoadCanceled(void)
 {
+  ui->statusbar->showMessage(tr("Cancelled."), 3000);
   ui->progressBar->hide();
+  setCursor(Qt::ArrowCursor);
 }
 
 
 void MainWindow::onTextFilesLoaded(void)
 {
-  ui->statusbar->showMessage(tr("Loaded."), 3000);
+  ui->statusbar->showMessage(tr("Files loaded."), 3000);
   ui->progressBar->hide();
-  ui->generatePushButton->setEnabled(true);
   setCursor(Qt::ArrowCursor);
-  generateText();
+  ui->generatePushButton->setEnabled(true);
+  generateText_Simple();
+}
+
+
+void MainWindow::onTextFilesLoading(const QString &filename)
+{
+  ui->statusbar->showMessage(tr("Loading %1 ...").arg(filename), 3000);
 }
 
 
@@ -170,6 +180,7 @@ void MainWindow::loadTextFilesThread(const QStringList &textFileNames)
   Q_D(MainWindow);
   foreach (QString textFilename, textFileNames) {
     if (!d->markovChain->isCancelled()) {
+      emit loadingTextFile(QFileInfo(textFilename).fileName());
       d->markovChain->readFromTextFile(textFilename);
     }
   }
@@ -221,7 +232,7 @@ void MainWindow::onLoadMarkovChain(void)
   if (!markovFilename.isEmpty()) {
     d->lastLoadMarkovDirectory = QFileInfo(markovFilename).absolutePath();
     d->markovChain->readFromJsonFile(markovFilename);
-    generateText();
+    generateText_Simple();
   }
 }
 

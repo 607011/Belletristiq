@@ -68,7 +68,7 @@ MarkovNode *MarkovChain::at(int idx)
 
 bool MarkovChain::readFromTextFile(const QString &filename)
 {
-  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\)])?", Qt::CaseSensitive, QRegExp::RegExp);
+  static const QRegExp reTokens("(\\b[^\\s]+\\b)([\\.,;!:\\?\\(\\)»«\"'_])?", Qt::CaseSensitive, QRegExp::RegExp);
   mCancelled = false;
   QFileInfo fi(filename);
   if (fi.isReadable() && fi.isFile()) {
@@ -82,7 +82,6 @@ bool MarkovChain::readFromTextFile(const QString &filename)
         while ((pos = reTokens.indexIn(line, pos)) != -1) {
           const QString &t1 = reTokens.cap(1);
           if (reTokens.captureCount() > 0 && !t1.isEmpty()) {
-            totalSize += t1.length();
             tokens << t1;
           }
           const QString &t2 = reTokens.cap(2);

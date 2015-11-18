@@ -29,6 +29,7 @@ public:
 
 signals:
   void textFilesLoadFinished(void);
+  void loadingTextFile(QString);
 
 protected:
   void closeEvent(QCloseEvent *);
@@ -38,9 +39,10 @@ private slots:
   void onSaveMarkovChain(void);
   void onLoadMarkovChain(void);
   void onResetMarkovChain(void);
-  void generateText(void);
+  void generateText_Simple(void);
   void onTextFilesLoadCanceled(void);
   void onTextFilesLoaded(void);
+  void onTextFilesLoading(const QString &);
 
 private:
   Ui::MainWindow *ui;
