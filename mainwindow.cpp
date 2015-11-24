@@ -151,9 +151,9 @@ void MainWindow::dropEvent(QDropEvent *e)
       }
     }
     loadTextFiles(textFileNames);
-    e->acceptProposedAction();
   }
   else if (e->mimeData()->hasText()) {
+    d->stopwatch.start();
     d->markovChain->addText(e->mimeData()->text());
     d->markovChain->postProcess();
     onTextFilesLoaded();
@@ -241,10 +241,9 @@ void MainWindow::onTextFilesLoaded(void)
 {
   Q_D(MainWindow);
   const qint64 elapsed = d->stopwatch.elapsed() / 1000;
-  ui->statusbar->showMessage(tr("Loaded in %1 seconds.")
-                             .arg(elapsed == 0
-                                  ? tr("<1")
-                                  : QString::number(elapsed))
+  ui->statusbar->showMessage(tr("Loaded in %1 %2.")
+                             .arg(elapsed == 0 ? tr("<1") : QString::number(elapsed))
+                             .arg(elapsed < 2 ? tr("second") : tr("seconds"))
                              , 3000);
   ui->tokensProgressBar->hide();
   ui->filesProgressBar->hide();

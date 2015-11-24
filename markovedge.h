@@ -15,8 +15,7 @@ class MarkovNode;
 
 class MarkovEdge {
 public:
-  explicit MarkovEdge(MarkovNode *);
-  MarkovEdge(MarkovNode *, int count);
+  explicit MarkovEdge(MarkovNode*, int count = 1);
 
   MarkovNode *node(void);
   int count(void) const;

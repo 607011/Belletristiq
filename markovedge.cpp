@@ -8,15 +8,6 @@
 #include "markovedge.h"
 #include "markovnode.h"
 
-MarkovEdge::MarkovEdge(MarkovNode *node)
-  : mNode(node)
-  , mCount(1)
-  , mProbability(1.0)
-{
-  /* ... */
-}
-
-
 MarkovEdge::MarkovEdge(MarkovNode *node, int count)
   : mNode(node)
   , mCount(count)

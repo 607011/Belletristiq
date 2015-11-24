@@ -10,7 +10,7 @@
 #include <QRegExp>
 #include <QFile>
 #include <QFileInfo>
-
+#include <QCoreApplication>
 
 const QByteArray MarkovChain::FileHeader("MRKV", 4);
 
@@ -94,6 +94,7 @@ void MarkovChain::addText(const QString &text)
 bool MarkovChain::readFromTextFile(const QString &filename)
 {
   mCancelled = false;
+  mSignalTimer.start();
   QFileInfo fi(filename);
   if (fi.isReadable() && fi.isFile()) {
     QFile inFile(filename);
@@ -117,6 +118,7 @@ bool MarkovChain::readFromMarkovFile(const QString &filename)
   qDebug() << "MarkovChain::readFromMarkovFile(" << filename << ")";
   bool ok = false;
   mCancelled = false;
+  mSignalTimer.start();
   QFile inFile(filename);
   if (inFile.open(QIODevice::ReadOnly)) {
     QByteArray header(4, '\0');
@@ -194,7 +196,10 @@ void MarkovChain::add(const QStringList &tokenList)
       }
       prev = curr;
       bytesProcessed += token.length();
-      emit progressValueChanged(int(bytesProcessed));
+      if (mSignalTimer.elapsed() > 1000 / 30) {
+        emit progressValueChanged(int(bytesProcessed));
+        mSignalTimer.restart();
+      }
     }
   }
 }

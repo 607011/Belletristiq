@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QString>
 #include <QMap>
+#include <QElapsedTimer>
 
 #include "markovnode.h"
 
@@ -51,6 +52,7 @@ signals:
 private:
   MarkovNodeMap mNodeMap;
   volatile bool mCancelled;
+  QElapsedTimer mSignalTimer;
 
 private:
   void parseText(const QString &line, QStringList &tokens, int &totalSize);
