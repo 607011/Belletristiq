@@ -136,7 +136,7 @@
      <x>0</x>
      <y>0</y>
      <width>640</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -154,7 +154,18 @@
     <property name="title">
      <string>Extras</string>
     </property>
+    <widget class="QMenu" name="menuMethod">
+     <property name="title">
+      <string>Method</string>
+     </property>
+     <addaction name="actionWords"/>
+     <addaction name="actionTuples1"/>
+     <addaction name="actionTuples2"/>
+     <addaction name="actionTuples3"/>
+     <addaction name="actionTuples4"/>
+    </widget>
     <addaction name="actionResetMarkovChain"/>
+    <addaction name="menuMethod"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -210,6 +221,58 @@
   <action name="actionAbout">
    <property name="text">
     <string>About ...</string>
+   </property>
+  </action>
+  <action name="actionWords">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Words</string>
+   </property>
+  </action>
+  <action name="actionTuples1">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>1-tuple</string>
+   </property>
+   <property name="toolTip">
+    <string>1</string>
+   </property>
+  </action>
+  <action name="actionTuples2">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>2-tuple</string>
+   </property>
+   <property name="toolTip">
+    <string>2</string>
+   </property>
+  </action>
+  <action name="actionTuples3">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>3-tuple</string>
+   </property>
+   <property name="toolTip">
+    <string>3</string>
+   </property>
+  </action>
+  <action name="actionTuples4">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>4-tuple</string>
+   </property>
+   <property name="toolTip">
+    <string>4</string>
    </property>
   </action>
  </widget>

@@ -18,6 +18,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QElapsedTimer>
+#include <QActionGroup>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -33,6 +34,8 @@ public:
     : markovChain(new MarkovChain)
     , pDist(0.0, 1.0)
     , textFilesLoaded(0)
+    , parseMethod(MainWindow::Words)
+    , tupleSize(0)
   {
     rng.seed(QDateTime::currentDateTimeUtc().toTime_t());
   }
@@ -53,6 +56,10 @@ public:
   QFuture<void> loadTextFuture;
   int textFilesLoaded;
   QElapsedTimer stopwatch;
+  QActionGroup *methodGroup;
+  MainWindow::ParseMethod parseMethod;
+  QStringList originalText;
+  int tupleSize;
 };
 
 
@@ -61,6 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
   , ui(new Ui::MainWindow)
   , d_ptr(new MainWindowPrivate)
 {
+  Q_D(MainWindow);
   ui->setupUi(this);
 
   ui->tokensProgressBar->hide();
@@ -81,6 +89,20 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(ui->actionAboutQt, SIGNAL(triggered(bool)), SLOT(aboutQt()));
 
   restoreSettings();
+
+  d->methodGroup = new QActionGroup(this);
+  ui->actionWords->setData(0);
+  ui->actionTuples1->setData(1);
+  ui->actionTuples2->setData(2);
+  ui->actionTuples3->setData(3);
+  ui->actionTuples4->setData(4);
+  d->methodGroup->addAction(ui->actionWords);
+  d->methodGroup->addAction(ui->actionTuples1);
+  d->methodGroup->addAction(ui->actionTuples2);
+  d->methodGroup->addAction(ui->actionTuples3);
+  d->methodGroup->addAction(ui->actionTuples4);
+  ui->actionTuples3->setChecked(true);
+  QObject::connect(d->methodGroup, SIGNAL(triggered(QAction*)), SLOT(onMethodChanged(QAction*)));
 
   setUnifiedTitleAndToolBarOnMac(true);
   setAcceptDrops(true);
@@ -153,11 +175,27 @@ void MainWindow::dropEvent(QDropEvent *e)
     loadTextFiles(textFileNames);
   }
   else if (e->mimeData()->hasText()) {
-    d->stopwatch.start();
-    d->markovChain->addText(e->mimeData()->text());
-    d->markovChain->postProcess();
-    onTextFilesLoaded();
+//    d->stopwatch.start();
+//    d->markovChain->addText(e->mimeData()->text());
+//    d->markovChain->postProcess();
+//    onTextFilesLoaded();
   }
+}
+
+
+void MainWindow::onMethodChanged(QAction *action)
+{
+  Q_D(MainWindow);
+  int selection = action->data().toInt();
+  if (selection == 0) {
+    d->parseMethod = Words;
+  }
+  else {
+    Q_ASSERT(selection < 4);
+    d->parseMethod = Tuples;
+    d->tupleSize = selection;
+  }
+  parseAll();
 }
 
 
@@ -186,7 +224,7 @@ void MainWindow::restoreSettings(void)
 }
 
 
-QString MainWindow::generateText_Simple(void)
+QString MainWindow::generateText_FromWords(void)
 {
   Q_D(MainWindow);
   std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
@@ -218,11 +256,47 @@ QString MainWindow::generateText_Simple(void)
 }
 
 
+QString MainWindow::generateText_FromTuples(void)
+{
+  Q_D(MainWindow);
+  std::uniform_int_distribution<int> nDist(0, d->markovChain->count() - 1);
+  MarkovNode *node = Q_NULLPTR;
+  QString lastToken;
+  QString result;
+  int N = ui->wordCountSpinBox->value();
+  while (N-- > 0) {
+    if (node == Q_NULLPTR) {
+      node = d->markovChain->at(nDist(d->rng));
+      int nTries = d->markovChain->count() / 2;
+      do {
+        node = d->markovChain->at(nDist(d->rng));
+      } while (!node->token().at(0).isUpper() && nTries-- > 0);
+      if (!result.isEmpty()) {
+        result += " \\\n";
+      }
+    }
+    const QString &token = node->token();
+    result += token;
+    lastToken = token;
+    node = node->selectSuccessor(d->pDist(d->rng));
+  }
+  return result;
+}
+
+
 void MainWindow::onGenerateText(void)
 {
+  Q_D(MainWindow);
   QString generatedText;
-  if (ui->algorithmComboBox->currentText() == tr("Simple")) {
-    generatedText = generateText_Simple();
+  switch (d->parseMethod) {
+  case Words:
+    generatedText = generateText_FromWords();
+    break;
+  case Tuples:
+    generatedText = generateText_FromTuples();
+    break;
+  default:
+    break;
   }
   ui->plainTextEdit->setPlainText(generatedText);
 }
@@ -269,7 +343,19 @@ void MainWindow::loadTextFilesThread(const QStringList &textFileNames)
   foreach (QString textFilename, textFileNames) {
     if (!d->markovChain->isCancelled()) {
       emit loadingTextFile(QFileInfo(textFilename).fileName());
-      d->markovChain->readFromTextFile(textFilename);
+      QFileInfo fi(textFilename);
+      if (fi.isReadable() && fi.isFile()) {
+        QFile inFile(textFilename);
+        if (inFile.open(QIODevice::ReadOnly)) {
+          const QString &text = QString::fromUtf8(inFile.readAll());
+          inFile.close();
+          d->originalText.append(text);
+          QStringList tokens;
+          int totalSize = 0;
+          parseText(text, tokens, totalSize);
+          d->markovChain->add(tokens);
+        }
+      }
     }
   }
   d->markovChain->postProcess();
@@ -347,8 +433,43 @@ void MainWindow::onResetMarkovChain(void)
   Q_D(MainWindow);
   // TODO: QMessageBox::question() should ask user if she really wants to reset the Markov chain
   d->markovChain->clear();
+  d->originalText.clear();
   ui->plainTextEdit->clear();
   ui->statusbar->showMessage(tr("Markov chain reset."), 3000);
+}
+
+
+void MainWindow::parseText(const QString &text, QStringList &tokens, int &totalSize)
+{
+  Q_D(MainWindow);
+  switch (d->parseMethod) {
+  case Words: {
+    static const QRegExp reTokens("(\\b[^\\sˇ]+\\b)([\\.,;!:\\?\\(\\)»«\"'_])?", Qt::CaseSensitive, QRegExp::RegExp);
+    int pos = 0;
+    while ((pos = reTokens.indexIn(text, pos)) != -1) {
+      const QString &t1 = reTokens.cap(1);
+      if (reTokens.captureCount() > 0 && !t1.isEmpty()) {
+        tokens << t1;
+      }
+      const QString &t2 = reTokens.cap(2);
+      if (reTokens.captureCount() > 1 && !t2.isEmpty()) {
+        tokens << t2;
+      }
+      totalSize += t1.length() + t2.length();
+      pos += reTokens.matchedLength();
+    }
+    break;
+  }
+  case Tuples: {
+    Q_ASSERT(d->tupleSize > 0);
+    for (int i = 0; i < text.size(); i += d->tupleSize) {
+      tokens << text.mid(i, d->tupleSize);
+    }
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 

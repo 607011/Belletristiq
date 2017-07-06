@@ -28,6 +28,8 @@ class MainWindow : public QMainWindow
   Q_OBJECT
 
 public:
+  enum ParseMethod { Words, Tuples };
+
   explicit MainWindow(QWidget *parent = Q_NULLPTR);
   ~MainWindow();
 
@@ -44,6 +46,7 @@ protected:
   void dropEvent(QDropEvent *) Q_DECL_OVERRIDE;
 
 private slots:
+  void onMethodChanged(QAction*);
   void onLoadTextFiles(void);
   void onSaveMarkovChain(void);
   void onLoadMarkovChain(void);
@@ -67,8 +70,9 @@ private:
   void restoreSettings(void);
   void loadTextFilesThread(const QStringList &textFileNames);
   void loadTextFiles(QStringList textFilenames);
-  QString generateText_Simple(void);
-
+  QString generateText_FromWords(void);
+  QString generateText_FromTuples(void);
+  void parseText(const QString &text, QStringList &tokens, int &totalSize);
 };
 
 #endif // __MAINWINDOW_H_

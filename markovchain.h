@@ -21,6 +21,7 @@ class MarkovChain : public QObject {
   Q_OBJECT
 
 public:
+
   typedef QMap<QString, MarkovNode*> MarkovNodeMap;
 
   MarkovChain(void);
@@ -43,8 +44,6 @@ public:
 
   static const QByteArray FileHeader;
 
-  void addText(const QString &text);
-
 signals:
   void progressRangeChanged(int, int);
   void progressValueChanged(int);
@@ -55,7 +54,6 @@ private:
   QElapsedTimer mSignalTimer;
 
 private:
-  void parseText(const QString &line, QStringList &tokens, int &totalSize);
 };
 
 
